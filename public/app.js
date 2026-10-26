@@ -878,7 +878,7 @@ function abrirRevision(lectura, { modelo, nFotos }) {
     modelo, nFotos,
     lugar: { ...lectura.lugar },
     fecha: lectura.fecha || hoyIso(),
-    total: lectura.total, subtotal: lectura.subtotal, ahorro: lectura.ahorro,
+    total: lectura.total, subtotal: lectura.subtotal, ahorro: lectura.ahorro, recargos: lectura.recargos,
     avisos: lectura.avisos || [],
     renglones: lectura.renglones.map((r, i) => ({ ...r, k: i, producto: r.producto || null, elegido: r.producto ? 'existe' : 'nuevo' })),
     descartados: lectura.descartados.map((d, i) => ({ ...d, k: i })),
@@ -892,7 +892,7 @@ function controlRev() {
   const pagado = Math.round(rev.renglones.reduce((s, r) => s + pagadoDe(r), 0) * 100) / 100;
   const impreso = Math.round(rev.renglones.reduce((s, r) => s + r.importe, 0) * 100) / 100;
   let esperado = null, suma = pagado;
-  if (rev.total > 0) esperado = rev.total;
+  if (rev.total > 0) esperado = Math.round((rev.total - (rev.recargos > 0 && rev.recargos < rev.total ? rev.recargos : 0)) * 100) / 100;
   else if (rev.subtotal > 0 && rev.ahorro > 0) esperado = Math.round((rev.subtotal - rev.ahorro) * 100) / 100;
   else if (rev.subtotal > 0) { esperado = rev.subtotal; suma = impreso; }
   if (esperado == null) return { estado: 'sin_total', suma: pagado };
@@ -903,10 +903,11 @@ function controlRev() {
 }
 function controlHtml() {
   const c = controlRev();
-  if (c.estado === 'ok') return `<div class="control control--ok">${ic('check', 20)}<span><b>Da ${fmtMoney(c.suma)}</b>, lo mismo que el ticket.</span></div>`;
+  const rec = rev.total > 0 && rev.recargos > 0 ? ` (más ${fmtMoney(rev.recargos)} de impuestos y recargos)` : '';
+  if (c.estado === 'ok') return `<div class="control control--ok">${ic('check', 20)}<span><b>Da ${fmtMoney(c.suma)}</b>, lo mismo que el ticket${rec}.</span></div>`;
   if (c.estado === 'sin_total') return `<div class="control">${ic('info', 20)}<span>No encontré el total del ticket: revisá que estén todos. Suman <b>${fmtMoney(c.suma)}</b>.</span></div>`;
   const d = c.diferencia;
-  return `<div class="control control--no">${ic('warn', 20)}<span><b>${d > 0 ? `Sobran ${fmtMoney(d)}` : `Faltan ${fmtMoney(-d)}`}</b>: suman ${fmtMoney(c.suma)} y el ticket dice ${fmtMoney(c.esperado)}. ${d > 0 ? 'Puede haber un producto repetido.' : 'Puede faltar un producto o una foto.'}</span></div>`;
+  return `<div class="control control--no">${ic('warn', 20)}<span><b>${d > 0 ? `Sobran ${fmtMoney(d)}` : `Faltan ${fmtMoney(-d)}`}</b>: suman ${fmtMoney(c.suma)} y el ticket dice ${fmtMoney(c.esperado)}${rec}. ${d > 0 ? 'Puede haber un producto repetido.' : 'Puede faltar un producto o una foto.'}</span></div>`;
 }
 function revRowHtml(r) {
   const p = r.elegido === 'existe' ? r.producto : null;

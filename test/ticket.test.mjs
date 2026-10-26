@@ -35,6 +35,15 @@ test('contra el total, y vale también si el total no restó los descuentos', ()
   assert.equal(controlTotal({ renglones, subtotal: 1500 }).estado, 'ok');
 });
 
+test('los recargos que no son productos (impuestos internos, percepciones) se descuentan del total', () => {
+  // Nini 1117-00007940: los productos con IVA dan 104.151,34; el agua paga $329,82 de impuestos internos.
+  const renglones = [{ importe: 104151.34, descuento: 0 }];
+  assert.equal(controlTotal({ renglones, total: 104481.16 }).estado, 'no_da');
+  const c = controlTotal({ renglones, total: 104481.16, recargos: 329.82 });
+  assert.equal(c.estado, 'ok');
+  assert.equal(c.esperado, 104151.34);
+});
+
 test('pagado, no cierra y "Son n"', () => {
   assert.equal(pagadoDe({ importe: 44958, descuento: 11239.5 }), 33718.5);
   assert.equal(noCierra({ cantidad: 1, precio_unitario: 4999, importe: 29994 }), true);

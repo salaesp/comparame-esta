@@ -59,17 +59,20 @@ function comparar(leidos, productos) {
   const libres = leidos.map((r) => ({ ...r, usado: false }));
   let importes = 0, cantidades = 0;
   for (const [texto, cant, imp, desc = 0] of productos) {
-    const cands = libres.filter((r) => !r.usado && Math.abs(r.importe - imp) <= 0.05);
+    // Medio peso de margen: en una factura sin IVA el importe con IVA lo calcula el modelo.
+    const cands = libres.filter((r) => !r.usado && Math.abs(r.importe - imp) <= 0.5);
     const r = cands.find((x) => normTexto(x.texto).slice(0, 12) === normTexto(texto).slice(0, 12)) || cands[0];
     if (!r) continue;
     r.usado = true;
     importes++;
-    if (Math.abs(r.cantidad - cant) <= 0.001 && Math.abs((r.descuento || 0) - desc) <= 0.05) cantidades++;
+    if (Math.abs(r.cantidad - cant) <= 0.001 && Math.abs((r.descuento || 0) - desc) <= 0.5) cantidades++;
   }
   return { importes, cantidades, de: productos.length };
 }
 
 // MEDIR_BASE_URL: otra URL (para probar el script contra un servidor falso).
+// Lo que suman los productos de la verdad (lo pagado por ellos, sin recargos como impuestos internos).
+const sumaVerdad = verdad ? Math.round(verdad.productos.reduce((t, [, , imp, desc = 0]) => t + imp - desc, 0) * 100) / 100 : null;
 const client = new Anthropic({ apiKey, baseURL: process.env.MEDIR_BASE_URL || 'https://api.anthropic.com', maxRetries: 1, timeout: 180_000 });
 const hoy = new Date().toISOString().slice(0, 10);
 const filas = [];
@@ -86,7 +89,7 @@ for (const modelo of modelos) {
         const fila = {
           modelo, esfuerzo, ms: r.ms, usd: costoUsd(modelo, r.usage), in: r.usage.input_tokens, out: r.usage.output_tokens,
           renglones: l.renglones.length, control: c.estado, pagado,
-          ...(v ? { importes: `${v.importes}/${v.de}`, cantidades: `${v.cantidades}/${v.de}`, da_lo_pagado: Math.abs(pagado - verdad.pagado) <= 1 } : {}),
+          ...(v ? { importes: `${v.importes}/${v.de}`, cantidades: `${v.cantidades}/${v.de}`, da_lo_pagado: Math.abs(pagado - sumaVerdad) <= 1 } : {}),
         };
         filas.push(fila);
         console.log(`${(r.ms / 1000).toFixed(1)} s · US$ ${fila.usd.toFixed(4)} · ${fila.renglones} productos${v ? ` · importes ${fila.importes} · cantidades ${fila.cantidades}` : ''} · ${c.estado}`);
@@ -98,7 +101,7 @@ for (const modelo of modelos) {
     }
   }
 }
-console.log('\n' + ['modelo', 'esfuerzo', 'segundos', 'US$', 'productos', 'importes', 'cantidades', 'da lo pagado', 'control'].join(' | '));
+console.log('\n' + ['modelo', 'esfuerzo', 'segundos', 'US$', 'productos', 'importes', 'cantidades', 'suma = verdad', 'control'].join(' | '));
 for (const f of filas) {
   console.log(f.error ? `${f.modelo} | ${f.esfuerzo} | falló: ${f.error}`
     : [f.modelo, f.esfuerzo, (f.ms / 1000).toFixed(1), f.usd.toFixed(4), f.renglones, f.importes ?? '—', f.cantidades ?? '—', f.da_lo_pagado ?? '—', f.control].join(' | '));
