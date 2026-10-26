@@ -20,8 +20,8 @@ before(async () => {
 });
 
 const claude = (respuesta) => {
-  const create = async (p) => ({ model: p.model, stop_reason: 'end_turn', usage: { input_tokens: 9000, output_tokens: 3000 }, content: [{ type: 'text', text: JSON.stringify(respuesta) }] });
-  setAnthropic({ messages: { create }, beta: { messages: { create } } });
+  const stream = (p) => ({ finalMessage: async () => ({ model: p.model, stop_reason: 'end_turn', usage: { input_tokens: 9000, output_tokens: 3000 }, content: [{ type: 'text', text: JSON.stringify(respuesta) }] }) });
+  setAnthropic({ messages: { stream }, beta: { messages: { stream } } });
 };
 
 // Lo que mandaría la revisión sin tocar nada: cada renglón con su producto o uno nuevo.
@@ -139,8 +139,8 @@ test('borrar un ticket propio se lleva sus precios; quitar un amigo deja de most
 });
 
 test('con la lectura fallida responde con el motivo y anota la lectura', async () => {
-  const create = async () => ({ model: 'claude-opus-5-5', stop_reason: 'refusal', usage: { input_tokens: 10, output_tokens: 0 }, content: [] });
-  setAnthropic({ messages: { create }, beta: { messages: { create } } });
+  const stream = () => ({ finalMessage: async () => ({ model: 'claude-opus-5-5', stop_reason: 'refusal', usage: { input_tokens: 10, output_tokens: 0 }, content: [] }) });
+  setAnthropic({ messages: { stream }, beta: { messages: { stream } } });
   const r = await pedir(worker, ana, 'POST', '/api/tickets/leer', { fotos: [FOTO] });
   assert.equal(r.status, 422);
   assert.equal(r.data.motivo, 'rechazo');

@@ -44,6 +44,19 @@ test('los recargos que no son productos (impuestos internos, percepciones) se de
   assert.equal(c.esperado, 104151.34);
 });
 
+test('con los precios sin IVA se controla contra el subtotal sin IVA', () => {
+  const renglones = [
+    { importe: 22990.73, descuento: 0, importe_sin_iva: 19000.6, descuento_sin_iva: 0 },
+    { importe: 1000, descuento: 0, importe_sin_iva: 826.45, descuento_sin_iva: 0 },
+  ];
+  // Las percepciones leídas de más no importan: no se usan.
+  const c = controlTotal({ renglones, iva_aparte: true, subtotal: 19827.05, total: 50000, recargos: 18075.85 });
+  assert.deepEqual([c.estado, c.contra, c.suma, c.suma_con_iva], ['ok', 'subtotal_sin_iva', 19827.05, 23990.73]);
+  assert.equal(controlTotal({ renglones, iva_aparte: true, subtotal: 25000 }).estado, 'no_da');
+  // Sin subtotal, como siempre: contra el total.
+  assert.equal(controlTotal({ renglones, iva_aparte: true, total: 23990.73 }).estado, 'ok');
+});
+
 test('pagado, no cierra y "Son n"', () => {
   assert.equal(pagadoDe({ importe: 44958, descuento: 11239.5 }), 33718.5);
   assert.equal(noCierra({ cantidad: 1, precio_unitario: 4999, importe: 29994 }), true);

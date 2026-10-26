@@ -878,7 +878,7 @@ function abrirRevision(lectura, { modelo, nFotos }) {
     modelo, nFotos,
     lugar: { ...lectura.lugar },
     fecha: lectura.fecha || hoyIso(),
-    total: lectura.total, subtotal: lectura.subtotal, ahorro: lectura.ahorro, recargos: lectura.recargos,
+    total: lectura.total, subtotal: lectura.subtotal, ahorro: lectura.ahorro, recargos: lectura.recargos, ivaAparte: !!lectura.iva_aparte,
     avisos: lectura.avisos || [],
     renglones: lectura.renglones.map((r, i) => ({ ...r, k: i, producto: r.producto || null, elegido: r.producto ? 'existe' : 'nuevo' })),
     descartados: lectura.descartados.map((d, i) => ({ ...d, k: i })),
@@ -891,6 +891,14 @@ const pagadoDe = (r) => Math.round((r.importe - (r.descuento || 0)) * 100) / 100
 function controlRev() {
   const pagado = Math.round(rev.renglones.reduce((s, r) => s + pagadoDe(r), 0) * 100) / 100;
   const impreso = Math.round(rev.renglones.reduce((s, r) => s + r.importe, 0) * 100) / 100;
+  // Una factura sin IVA: contra su subtotal sin IVA (lib/ticket.mjs, controlTotal).
+  if (rev.ivaAparte && rev.subtotal > 0 && rev.renglones.every((r) => r.importe_sin_iva != null)) {
+    const sinIva = Math.round(rev.renglones.reduce((s, r) => s + r.importe_sin_iva - (r.descuento_sin_iva || 0), 0) * 100) / 100;
+    const dif = Math.round((sinIva - rev.subtotal) * 100) / 100;
+    return Math.abs(dif) <= Math.max(1, rev.subtotal * 0.001)
+      ? { estado: 'ok', suma: pagado, sinIva, esperado: rev.subtotal }
+      : { estado: 'no_da', suma: sinIva, esperado: rev.subtotal, diferencia: dif, sinIva: true };
+  }
   let esperado = null, suma = pagado;
   if (rev.total > 0) esperado = Math.round((rev.total - (rev.recargos > 0 && rev.recargos < rev.total ? rev.recargos : 0)) * 100) / 100;
   else if (rev.subtotal > 0 && rev.ahorro > 0) esperado = Math.round((rev.subtotal - rev.ahorro) * 100) / 100;
@@ -904,10 +912,11 @@ function controlRev() {
 function controlHtml() {
   const c = controlRev();
   const rec = rev.total > 0 && rev.recargos > 0 ? ` (más ${fmtMoney(rev.recargos)} de impuestos y recargos)` : '';
+  if (c.estado === 'ok' && c.sinIva) return `<div class="control control--ok">${ic('check', 20)}<span><b>Da ${fmtMoney(c.sinIva)} sin IVA</b>, lo mismo que el subtotal de la factura. Con IVA, ${fmtMoney(c.suma)}.</span></div>`;
   if (c.estado === 'ok') return `<div class="control control--ok">${ic('check', 20)}<span><b>Da ${fmtMoney(c.suma)}</b>, lo mismo que el ticket${rec}.</span></div>`;
   if (c.estado === 'sin_total') return `<div class="control">${ic('info', 20)}<span>No encontré el total del ticket: revisá que estén todos. Suman <b>${fmtMoney(c.suma)}</b>.</span></div>`;
   const d = c.diferencia;
-  return `<div class="control control--no">${ic('warn', 20)}<span><b>${d > 0 ? `Sobran ${fmtMoney(d)}` : `Faltan ${fmtMoney(-d)}`}</b>: suman ${fmtMoney(c.suma)} y el ticket dice ${fmtMoney(c.esperado)}${rec}. ${d > 0 ? 'Puede haber un producto repetido.' : 'Puede faltar un producto o una foto.'}</span></div>`;
+  return `<div class="control control--no">${ic('warn', 20)}<span><b>${d > 0 ? `Sobran ${fmtMoney(d)}` : `Faltan ${fmtMoney(-d)}`}</b>: suman ${fmtMoney(c.suma)}${c.sinIva ? ' sin IVA' : ''} y ${c.sinIva ? 'el subtotal' : 'el ticket'} dice ${fmtMoney(c.esperado)}${c.sinIva ? '' : rec}. ${d > 0 ? 'Puede haber un producto repetido.' : 'Puede faltar un producto o una foto.'}</span></div>`;
 }
 function revRowHtml(r) {
   const p = r.elegido === 'existe' ? r.producto : null;
@@ -1078,6 +1087,11 @@ function editRenglon(k) {
           if (m.error) { toast(m.error, { icon: 'error' }); return; }
           const g = m.medida_unidad === 'kg' ? ['g', 1000] : m.medida_unidad === 'l' ? ['ml', 1000] : [m.medida_unidad, 1];
           Object.assign(r, { nombre, marca: el.querySelector('#re-marca').value.trim(), medida: m.medida ? m.medida * g[1] : null, medida_unidad: m.medida ? g[0] : '' });
+        }
+        // En una factura sin IVA lo que se edita es con IVA: lo sin IVA del control se recalcula.
+        if (r.importe_sin_iva != null && r.iva) {
+          const k = 1 + r.iva / 100;
+          Object.assign(r, { importe_sin_iva: Math.round((imp / k) * 100) / 100, descuento_sin_iva: Math.round((desc / k) * 100) / 100 });
         }
         Object.assign(r, { cantidad: cant, importe: imp, descuento: desc });
         r.no_cierra = r.precio_unitario > 0 && imp > cant * r.precio_unitario * 1.005 + 0.05;

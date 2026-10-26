@@ -81,7 +81,9 @@ test('con los precios sin IVA, la app suma el IVA de cada renglón (el modelo s�
   assert.equal(v.importe, 23605.16); // al 10,5%
   assert.equal(v.cantidad, 1.23); // 1,113 no cierra con el importe: 21362,14 / 17367,59
   assert.equal(o.importe, 3506.13); // sin %: 21
-  assert.equal(o.cantidad, 2); // lo que no va por kilo no se toca (la promo baja el importe)
+  assert.equal(o.cantidad, 2); // 2 × 1704,49 no da 2897,63: es una promo, queda como está
+  // Se tomó la columna de los bultos (1) y no la de las unidades (6): 6 × 1806,89 = 10841,34.
+  assert.equal(limpiarRespuesta({ iva_aparte: true, renglones: [{ texto: 'VILLA DEL SUR agua', cantidad: 1, unidad: 'u', precio_unitario: 1806.89, importe: 10841.34, descuento: 0, iva: 21 }] }).renglones[0].cantidad, 6);
   // Un ticket común no se toca.
   assert.equal(limpiarRespuesta({ iva_aparte: false, renglones: [{ texto: 'X', cantidad: 1, unidad: 'u', importe: 100, descuento: 0, iva: 21 }] }).renglones[0].importe, 100);
 });
@@ -93,7 +95,8 @@ function clienteFalso(respuesta, extra = {}) {
     calls.push(params);
     return { model: params.model, stop_reason: 'end_turn', usage: { input_tokens: 9000, output_tokens: 3000 }, content: [{ type: 'text', text: JSON.stringify(respuesta) }], ...extra };
   };
-  return { calls, messages: { create: contestar }, beta: { messages: { create: contestar } } };
+  const stream = (params) => ({ finalMessage: () => contestar(params) });
+  return { calls, messages: { stream }, beta: { messages: { stream } } };
 }
 
 test('leerTicket: manda las fotos con el schema y el esfuerzo; Opus y Sonnet con fallbacks, Haiku sin', async () => {
