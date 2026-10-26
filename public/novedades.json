@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.1",
+    "fecha": "2026-10-26",
+    "notas": [
+      "Si la fecha del ticket es de hace mucho (como un «25/10/26» leído como 2025), la revisión te avisa y la arreglás con un toque.",
+      "Si guardás un ticket que ya habías cargado, te avisa antes.",
+      "En «Todos los precios» de un producto, cada precio abre su ticket (así podés borrar uno cargado de más).",
+      "Los quesos y fiambres por peso de un mismo ticket ya no se separan en varios productos."
+    ]
+  },
+  {
     "version": "0.2.0",
     "fecha": "2026-10-26",
     "notas": [

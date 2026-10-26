@@ -97,6 +97,25 @@ test('el amigo ve el ticket; quien no es amigo, no', async () => {
   assert.equal((await pedir(worker, beto, 'DELETE', `/api/tickets/${id}`)).status, 404); // no es suyo
 });
 
+test('el mismo ticket otra vez (aunque con otra fecha): avisa, y se guarda sólo si se insiste', async () => {
+  claude({ ...carrefour.respuesta, fecha: '2025-10-25' });
+  const { data: { lectura } } = await pedir(worker, ana, 'POST', '/api/tickets/leer', { fotos: [FOTO, FOTO, FOTO], hoy: '2026-10-26' });
+  const r = await pedir(worker, ana, 'POST', '/api/tickets', revisado(lectura));
+  assert.equal(r.status, 409);
+  assert.equal(r.data.duplicado.fecha, '2026-10-25'); // el que ya estaba, con su fecha
+  const f = await pedir(worker, ana, 'POST', '/api/tickets', revisado(lectura, { forzar: true }));
+  assert.equal(f.status, 201);
+  assert.equal((await pedir(worker, ana, 'DELETE', `/api/tickets/${f.data.id}`)).status, 200);
+});
+
+test('los códigos de las piezas pesadas guardados de antes se borran con el schema', async () => {
+  await db.sql("insert into productos (id, nombre, ean) values ('pz', 'Queso', '2506434002651')");
+  const { SCHEMA_STATEMENTS } = await import('../lib/schema.mjs');
+  for (const st of SCHEMA_STATEMENTS) db.sqlite.exec(st);
+  assert.equal((await db.sql("select ean from productos where id = 'pz'"))[0].ean, '');
+  await db.sql("delete from productos where id = 'pz'");
+});
+
 test('el próximo ticket de la misma cadena reconoce el producto solo (alias), aunque lo cargue otro', async () => {
   const r1 = carrefour.respuesta.renglones[0];
   claude({ ...carrefour.respuesta, fecha: '2026-10-26', subtotal: null, ahorro: null, total: 5200,

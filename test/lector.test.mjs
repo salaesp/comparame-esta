@@ -35,6 +35,13 @@ test('una foto con su número antes, y la consigna al final; con varias, la regl
   assert.doesNotMatch(consigna({ n: 1 }), /Son 1 fotos/);
 });
 
+test('la fecha: el año de dos dígitos es del 2000, y una fecha del futuro no vale', () => {
+  assert.match(consigna({ n: 1, hoy: '2026-10-26' }), /"25\/10\/26" es 2026-10-25/);
+  assert.equal(limpiarRespuesta({ fecha: '2026-10-25', renglones: [] }, { hoy: '2026-10-26' }).fecha, '2026-10-25');
+  assert.equal(limpiarRespuesta({ fecha: '2027-01-01', renglones: [] }, { hoy: '2026-10-26' }).fecha, null);
+  assert.equal(limpiarRespuesta({ fecha: '2025-10-25', renglones: [] }, { hoy: '2026-10-26' }).fecha, '2025-10-25'); // lo marca la revisión
+});
+
 test('fotosError: hace falta al menos una, hasta FOTOS_MAX, y que sean imágenes', () => {
   assert.match(fotosError([]), /Falta/);
   assert.match(fotosError(Array(FOTOS_MAX + 1).fill(FOTO)), /como mucho/);

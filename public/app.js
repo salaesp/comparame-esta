@@ -42,6 +42,13 @@ function fmtFecha(iso) {
   const [y, m, dd] = iso.split('-').map(Number);
   return `${dd} ${MESES[m - 1]}${y !== new Date().getFullYear() ? ` ${y}` : ''}`;
 }
+// "25 oct 2026": la fecha entera, sin "ayer" (donde se comparan fechas, "ayer" al lado de
+// "25 oct 2025" confundía: era el mismo día de otro año).
+function fmtFechaLarga(iso) {
+  if (!iso) return '';
+  const [y, m, dd] = iso.split('-').map(Number);
+  return `${dd} ${MESES[m - 1]} ${y}`;
+}
 // La medida como se lee: "500 g", "1 kg", "1,5 L", "4 u" (misma cuenta que lib/productos.mjs).
 function medidaLabel(medida, unidad) {
   if (!(medida > 0)) return '';
@@ -613,7 +620,7 @@ async function openProducto(pid) {
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
-      ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<div class="hist__row"><span>${esc(fmtFecha(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(comparable(pr))}</b></div>`).join('')}</div></details>` : ''}
+      ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(comparable(pr))}</b></button>`).join('')}</div></details>` : ''}
       <div class="prodfoot">
         ${p.ean ? `<span class="chip">Código ${esc(p.ean)}</span>` : ''}
         <button type="button" class="set__btn" data-prod-edit="${esc(p.id)}">${ic('edit', 18)} Corregir el producto</button>
@@ -958,6 +965,18 @@ function revRowHtml(r) {
     <span class="mrow__right"><span class="mrow__amt">${fmtMoney(pagadoDe(r))}</span>${r.descuento > 0 ? `<span class="row__of">de ${fmtMoney(r.importe)}</span>` : ''}</span>
   </button>`;
 }
+// Una fecha de hace más de FECHA_RARA_DIAS es rara para un ticket que se acaba de sacar: se
+// pregunta. Si cambiándole el año a éste queda en los últimos días (un "25/10/26" leído como
+// 2025), se ofrece con un toque.
+const FECHA_RARA_DIAS = 60;
+function fechaRaraHtml(f) {
+  if (!f || diasDesde(f) <= FECHA_RARA_DIAS) return '';
+  const hoy = hoyIso();
+  const esteAnio = `${hoy.slice(0, 4)}${f.slice(4)}`;
+  const arreglo = esteAnio <= hoy && diasDesde(esteAnio) <= FECHA_RARA_DIAS ? esteAnio : '';
+  return `<div class="control control--no">${ic('warn', 20)}<span><b>La fecha es del ${esc(fmtFechaLarga(f))}</b>, hace ${diasDesde(f)} días. ¿Está bien?
+    ${arreglo ? `<button type="button" class="set__btn fecha-fix" data-fecha-fix="${esc(arreglo)}">Es del ${esc(fmtFechaLarga(arreglo))}</button>` : ''}</span></div>`;
+}
 function revisionHtml() {
   const l = rev.lugar;
   const rep = rev.descartados.filter((d) => d.motivo === 'repetido');
@@ -974,6 +993,7 @@ function revisionHtml() {
         <span class="mrow__text"><span class="mrow__title">Fecha</span></span>
         <input type="date" id="rev-fecha" value="${esc(rev.fecha)}" max="${hoyIso()}"></label>
     </div>
+    ${fechaRaraHtml(rev.fecha)}
     ${controlHtml()}
     ${rev.avisos.length ? `<ul class="avisos">${rev.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
     <div class="gcard">${rev.renglones.map(revRowHtml).join('') || '<p class="note">No quedó ningún producto.</p>'}</div>
@@ -1130,7 +1150,7 @@ function editRenglon(k) {
   });
 }
 
-async function guardarRevision(btn) {
+async function guardarRevision(btn, forzar = false) {
   const fecha = $('rev-fecha')?.value || rev.fecha;
   if (!rev.lugar.cadena && !rev.lugar.id) { toast('Falta el lugar del ticket.', { icon: 'error' }); editLugar(); return; }
   if (!rev.renglones.length) { toast('El ticket no tiene productos.', { icon: 'error' }); return; }
@@ -1145,6 +1165,7 @@ async function guardarRevision(btn) {
     fecha,
     lugar: rev.lugar.existe ? { id: rev.lugar.id } : { cadena: rev.lugar.cadena, sucursal: rev.lugar.sucursal || '', direccion: rev.lugar.direccion || '', cuit: rev.lugar.cuit || '' },
     total: rev.total, n_fotos: rev.nFotos, modelo: rev.modelo,
+    ...(forzar ? { forzar: true } : {}),
     renglones: rev.renglones.map((r) => ({
       texto: r.texto, cantidad: r.cantidad, unidad: r.unidad, precio_unitario: r.precio_unitario, importe: r.importe, descuento: r.descuento,
       producto_id: r.elegido === 'existe' ? r.producto.id : null,
@@ -1166,6 +1187,15 @@ async function guardarRevision(btn) {
     });
   } catch (e) {
     btn.classList.remove('mvf__submit--busy'); btn.disabled = false;
+    if (e.status === 409 && e.data?.duplicado) {
+      const d = e.data.duplicado;
+      const ok = await askConfirm('Ya cargaste este ticket', {
+        text: `Tenés uno del mismo lugar, con el mismo total y los mismos ${body.renglones.length} productos, del ${fmtFechaLarga(d.fecha)}.`,
+        ok: 'Guardar igual', cancel: 'No guardar', icon: 'warn',
+      });
+      if (ok) guardarRevision(btn, true);
+      return;
+    }
     if (e.status !== 401) toast(e.message, { icon: 'error' });
   }
 }
@@ -1306,13 +1336,15 @@ document.addEventListener('click', (e) => {
   const rv = t.closest('[data-rev]');
   if (rv) { editRenglon(Number(rv.dataset.rev)); return; }
   if (t.closest('[data-rev-lugar]')) { editLugar(); return; }
+  const ff = t.closest('[data-fecha-fix]');
+  if (ff && rev) { rev.fecha = ff.dataset.fechaFix; repaintModal(); return; }
   const dv = t.closest('[data-desc-vuelve]');
   if (dv) { volverAPoner(Number(dv.dataset.descVuelve)); return; }
   const gd = t.closest('[data-rev-guardar]');
   if (gd) { guardarRevision(gd); return; }
 });
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'rev-fecha' && rev) rev.fecha = e.target.value;
+  if (e.target.id === 'rev-fecha' && rev) { rev.fecha = e.target.value; repaintModal(); }
 });
 
 // ---------- Arranque ----------

@@ -66,4 +66,7 @@ test('nombreKey, tidyNombre y eanValido', () => {
   assert.equal(eanValido('7790387000108'), '7790387000108');
   assert.equal(eanValido('7790387000107'), '');
   assert.equal(eanValido('abc'), '');
+  // El código de una pieza pesada (empieza con 2: lleva el peso o el precio) no es un EAN del producto.
+  assert.equal(eanValido('2506434003054'), '');
+  assert.equal(eanValido('2506434002651'), '');
 });

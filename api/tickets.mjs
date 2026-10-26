@@ -72,7 +72,7 @@ async function guardar(req, userId) {
   const v = validarTicket(await readJson(req));
   if (v.error) return error(v.error, 422);
   const g = await guardarStmts(userId, v);
-  if (g.error) return error(g.error, g.status);
+  if (g.error) return error(g.error, g.status, g.duplicado ? { duplicado: g.duplicado } : undefined);
   await txBatch(g.stmts);
   return json({ ok: true, id: g.ticketId }, 201);
 }

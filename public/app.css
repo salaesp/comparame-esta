@@ -116,6 +116,14 @@
 /* Dentro del recuadro del total (card-deep) va un escalón más claro, si no se pierde. */
 .prodhero .gzbtn { background: var(--card); }
 
+/* Cada precio de "Todos los precios" abre su ticket. */
+.hist__row--btn { width: 100%; border: none; border-bottom: 1px solid var(--outline); background: none; color: inherit;
+  font: inherit; font-size: var(--t-body-m); text-align: left; cursor: pointer; }
+.hist__row--btn:hover { background: var(--card-deep); }
+/* El arreglo de la fecha, debajo del aviso. */
+.fecha-fix { margin-top: var(--sp-2); }
+.control .fecha-fix { display: inline-flex; }
+
 /* Un chip largo (la dirección de un lugar) se corta con "…" en vez de salirse de la fila. */
 .row__meta .movchips { min-width: 0; overflow: hidden; }
 .row__meta .chip { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
