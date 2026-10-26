@@ -44,9 +44,13 @@ Toda la UI y los textos van en castellano rioplatense.
 
 ## Claude
 
-`lectorConfig()`: el modelo sale de `LECTOR_MODELO` (default `claude-opus-5-5`; también
-`claude-sonnet-5-5` y `claude-haiku-5-5`) y el esfuerzo de `LECTOR_ESFUERZO` (default `medium`),
-sin deploy. Opus y Sonnet van con `fallbacks: 'default'` (beta `server-side-fallback-2026-07-01`):
+`lectorConfig()`: el modelo sale de `LECTOR_MODELO` (default `claude-haiku-5-5`; también
+`claude-sonnet-5-5` y `claude-opus-5-5`) y el esfuerzo de `LECTOR_ESFUERZO` (default `low`), sin
+deploy. Se eligió midiendo (docs/diseno.md): los tres leen bien Carrefour y Nini, y Haiku bajo cuesta
+~US$ 0,005 por ticket contra 0,05 de Sonnet y 0,10 de Opus. El modelo sólo COPIA lo impreso (números,
+% de IVA, títulos de columnas): las cuentas las hace `limpiarRespuesta` (sumar el IVA de una factura
+sin IVA —se reconoce también por una columna "PRECIO SIN I.V.A."—, corregir la cantidad que no cierra
+con el importe) y el control de una factura sin IVA va contra su subtotal sin IVA. Opus y Sonnet van con `fallbacks: 'default'` (beta `server-side-fallback-2026-07-01`):
 si un clasificador rechaza por error, la API reintenta con otro modelo. Un rechazo, una respuesta
 cortada o rota se contestan con su `motivo` (422). La elección del modelo se hace midiendo con
 `scripts/medir-modelos.mjs` (fotos reales + `verdad.json`). La key es el secret `ANTHROPIC_API_KEY`.

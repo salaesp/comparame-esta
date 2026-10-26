@@ -218,7 +218,7 @@ bien?
    amigos.
 5. **Topes:** sin límite por ahora. Cada lectura queda anotada en `lecturas` con sus tokens y su costo.
 6. **Modelo:** se miden los tres (`scripts/medir-modelos.mjs`) con fotos reales antes de elegir.
-   Mientras tanto la app usa Opus 5.5 (`LECTOR_MODELO`). AI Gateway: queda opcional
+   **Elegido: Haiku 5.5 con esfuerzo bajo** (ver la medición al final); se cambia con `LECTOR_MODELO`. AI Gateway: queda opcional
    (`ANTHROPIC_BASE_URL_LECTOR`).
 7. **Precios viejos:** en "¿dónde está más barato?" entran los de los últimos 30 días; los más viejos
    se ven grises.

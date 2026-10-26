@@ -39,8 +39,8 @@ Opcionales (variables del Worker; se cambian desde el panel sin deploy):
 |---|---|---|
 | `MAX_USERS` | Cuántas personas pueden entrar | 50 |
 | `ALLOWED_EMAILS` | Emails que entran aunque esté llena, separados por coma | — |
-| `LECTOR_MODELO` | `claude-opus-5-5`, `claude-sonnet-5-5` o `claude-haiku-5-5` | `claude-opus-5-5` |
-| `LECTOR_ESFUERZO` | `low`, `medium` o `high` | `medium` |
+| `LECTOR_MODELO` | `claude-haiku-5-5`, `claude-sonnet-5-5` o `claude-opus-5-5` | `claude-haiku-5-5` |
+| `LECTOR_ESFUERZO` | `low`, `medium` o `high` | `low` |
 | `ANTHROPIC_BASE_URL_LECTOR` | Otra URL para la API de Anthropic (por ejemplo, la de Cloudflare AI Gateway) | `https://api.anthropic.com` |
 
 ## 4. Desplegar

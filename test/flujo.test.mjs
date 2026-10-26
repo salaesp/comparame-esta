@@ -70,7 +70,7 @@ test('leer un ticket de tres fotos: lo cruza con el catálogo y controla el tota
   assert.equal(lectura.renglones[17].medida, 1000); // 1 l de alcohol → 1000 ml
   const [{ n, costo }] = await db.sql('select count(*) as n, sum(costo_usd) as costo from lecturas');
   assert.equal(n, 1);
-  assert.equal(costo, 0.096);
+  assert.equal(costo, 0.0024);
 
   const g = await pedir(worker, ana, 'POST', '/api/tickets', revisado(lectura));
   assert.equal(g.status, 201);

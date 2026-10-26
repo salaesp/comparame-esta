@@ -128,7 +128,7 @@ test('leerTicket: un rechazo, una respuesta cortada o rota se dicen con su motiv
 test('costo y configuración', () => {
   assert.equal(costoUsd('claude-opus-5-5', { input_tokens: 1e6, output_tokens: 1e6 }), 24);
   assert.equal(costoUsd('claude-haiku-5-5', { input_tokens: 10000, output_tokens: 2000 }), 0.002);
-  assert.deepEqual(lectorConfig({}), { modelo: 'claude-opus-5-5', esfuerzo: 'medium' });
-  assert.deepEqual(lectorConfig({ LECTOR_MODELO: 'claude-haiku-5-5', LECTOR_ESFUERZO: 'low' }), { modelo: 'claude-haiku-5-5', esfuerzo: 'low' });
-  assert.deepEqual(lectorConfig({ LECTOR_MODELO: 'gpt', LECTOR_ESFUERZO: 'max' }), { modelo: 'claude-opus-5-5', esfuerzo: 'medium' });
+  assert.deepEqual(lectorConfig({}), { modelo: 'claude-haiku-5-5', esfuerzo: 'low' });
+  assert.deepEqual(lectorConfig({ LECTOR_MODELO: 'claude-sonnet-5-5', LECTOR_ESFUERZO: 'medium' }), { modelo: 'claude-sonnet-5-5', esfuerzo: 'medium' });
+  assert.deepEqual(lectorConfig({ LECTOR_MODELO: 'gpt', LECTOR_ESFUERZO: 'max' }), { modelo: 'claude-haiku-5-5', esfuerzo: 'low' });
 });
