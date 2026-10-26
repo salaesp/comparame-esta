@@ -110,3 +110,7 @@
 .hist > summary::before { content: '›'; display: inline-block; width: 1em; text-align: center; font-size: var(--t-title-l);
   transition: transform var(--dur-s) var(--spring); }
 .hist[open] > summary::before { transform: rotate(90deg); }
+
+/* Un chip largo (la dirección de un lugar) se corta con "…" en vez de salirse de la fila. */
+.row__meta .movchips { min-width: 0; overflow: hidden; }
+.row__meta .chip { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; }

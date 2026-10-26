@@ -229,3 +229,30 @@ Además, en lo que no estaba dicho:
 - Un producto lo corrige quien lo creó o quien tiene algún precio cargado de él.
 - Si en la revisión se confirma un producto de otro lugar, el alias de esa cadena apunta a él: lo
   último que se confirmó gana.
+
+## Medición de los modelos (26/10/2026)
+
+Con `scripts/medir-modelos.mjs` y tres tickets reales: Carrefour en 3 fotos que se pisan (19
+productos, descuentos en el renglón de abajo), Nini 1117-00007940 en 2 hojas (18 productos,
+precios sin IVA, unidades por bulto, impuesto interno) y la hoja 1 de 3 de Nini 0101-01264349
+(25 productos, la foto cortada a la izquierda). La verdad, pasada a mano, es la de gastos-app.
+
+Con la consigna final (el modelo copia lo impreso; la app suma el IVA, corrige la cantidad que
+no cierra y controla una factura sin IVA contra su subtotal sin IVA), los tres modelos leen los
+tres tickets bien: todos los importes y casi todas las cantidades (Haiku: 24 de 25 en la hoja
+cortada). Lo que cambia es el costo y el tiempo, por ticket:
+
+| Modelo · esfuerzo | Tiempo | Costo por ticket |
+|---|---|---|
+| Opus 5.5 · low | 22–27 s | US$ 0,09–0,12 |
+| Opus 5.5 · medium | 37–39 s | US$ 0,13–0,15 |
+| Sonnet 5.5 · low | 15–20 s | US$ 0,04–0,06 |
+| Sonnet 5.5 · medium | 15–32 s | US$ 0,04–0,07 |
+| Haiku 5.5 · low | 22–35 s | US$ 0,004–0,005 |
+| Haiku 5.5 · medium | 26–50 s | US$ 0,005–0,008 |
+
+Lo que se aprendió en el camino (antes de la consigna final): pedirle al modelo que sume el IVA
+fallaba a veces (dejaba los importes sin IVA y ponía el IVA como "recargo"), el resumen del pie de
+Nini viene corrido y el IVA se leía como percepción, y en Nini la cantidad son las unidades
+(CANTIDAD × U.B.), no los bultos. Una sola corrida por combinación: es poco para hablar de
+variación entre modelos.

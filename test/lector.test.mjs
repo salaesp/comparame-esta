@@ -84,6 +84,12 @@ test('con los precios sin IVA, la app suma el IVA de cada renglón (el modelo s�
   assert.equal(o.cantidad, 2); // 2 × 1704,49 no da 2897,63: es una promo, queda como está
   // Se tomó la columna de los bultos (1) y no la de las unidades (6): 6 × 1806,89 = 10841,34.
   assert.equal(limpiarRespuesta({ iva_aparte: true, renglones: [{ texto: 'VILLA DEL SUR agua', cantidad: 1, unidad: 'u', precio_unitario: 1806.89, importe: 10841.34, descuento: 0, iva: 21 }] }).renglones[0].cantidad, 6);
+  // El modelo no lo marcó pero la columna lo dice; y el precio vino con IVA.
+  const h = limpiarRespuesta({ iva_aparte: false, columnas: ['DESCRIPCION', 'PRECIO SIN I.V.A.', '%I.V.A.', 'P.U. CON I.V.A.', 'TOTAL'],
+    renglones: [{ texto: 'UNION yerba', cantidad: 2, unidad: 'u', precio_unitario: 2178.8, importe: 3601.32, descuento: 0, iva: 21 }] });
+  assert.equal(h.iva_aparte, true);
+  assert.equal(h.renglones[0].importe, 4357.6);
+  assert.equal(h.renglones[0].precio_unitario, 2178.8);
   // Un ticket común no se toca.
   assert.equal(limpiarRespuesta({ iva_aparte: false, renglones: [{ texto: 'X', cantidad: 1, unidad: 'u', importe: 100, descuento: 0, iva: 21 }] }).renglones[0].importe, 100);
 });

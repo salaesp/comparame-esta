@@ -26,7 +26,7 @@
     "nombre": "Fideos tirabuzón sin TACC",
     "medida_cantidad": 500,
     "medida_unidad": "g",
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -41,7 +41,7 @@
     "nombre": "Café instantáneo expresso gold",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -56,7 +56,7 @@
     "nombre": "Tostadas de arroz sin TACC",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -71,7 +71,7 @@
     "nombre": "Snack de chocolate y castañas de cajú",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -86,7 +86,7 @@
     "nombre": "Edulcorante líquido con sucralosa",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -101,7 +101,7 @@
     "nombre": "Galletitas cubiertas de chocolate con leche",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -116,7 +116,7 @@
     "nombre": "Bombones",
     "medida_cantidad": 4,
     "medida_unidad": "u",
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -131,7 +131,7 @@
     "nombre": "Té en hebras Blue Earl Grey",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -146,7 +146,7 @@
     "nombre": "Tisana en hebras Be Berries",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -161,7 +161,7 @@
     "nombre": "Queso reggianito en horma",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 1,
@@ -176,7 +176,7 @@
     "nombre": "Queso reggianito en horma",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -191,7 +191,7 @@
     "nombre": "Queso reggianito en horma",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -206,7 +206,7 @@
     "nombre": "Banana",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 10.5
    },
    {
     "foto": 2,
@@ -221,7 +221,7 @@
     "nombre": "Pulverizador de plástico",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -236,7 +236,7 @@
     "nombre": "Papel higiénico doble hoja",
     "medida_cantidad": 4,
     "medida_unidad": "u",
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -251,7 +251,7 @@
     "nombre": "Suavizante concentrado brisa intenso",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -266,7 +266,7 @@
     "nombre": "Algodón hidrófilo premium",
     "medida_cantidad": 75,
     "medida_unidad": "g",
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -281,7 +281,7 @@
     "nombre": "Alcohol etílico soft",
     "medida_cantidad": 1,
     "medida_unidad": "l",
-    "iva": null
+    "iva": 21
    },
    {
     "foto": 2,
@@ -296,7 +296,7 @@
     "nombre": "Mascarilla capilar colágeno lifter",
     "medida_cantidad": null,
     "medida_unidad": null,
-    "iva": null
+    "iva": 21
    }
   ],
   "descartados": [
@@ -417,6 +417,7 @@
   ],
   "avisos": [],
   "iva_aparte": false,
-  "recargos": null
+  "recargos": null,
+  "columnas": []
  }
 }
