@@ -8,7 +8,10 @@
 //   node scripts/bump-ui-version.mjs [patch|minor|major]  junta las pendientes en una versión
 //   node scripts/bump-ui-version.mjs --check              todo sincronizado (lo corre el test)
 //   node scripts/bump-ui-version.mjs --staged             el pre-commit: si el commit toca
-//                                                         public/, tiene que haber una novedad pendiente
+//                                                         public/, tiene que haber una novedad pendiente;
+//                                                         en main, además, la numera (Cloudflare despliega
+//                                                         cada push a main, y sin VERSION nueva el celular
+//                                                         no se entera de que hay una versión nueva)
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -83,10 +86,17 @@ function staged() {
   const git = (ref) => { try { return execSync(`git show ${ref}:public/sw.js`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
   if (releaseStaged(git('HEAD'), git(''))) return;
   const { novedades } = leer();
-  if (pendiente(novedades[0]?.version) && novedades[0].notas?.length) return;
+  if (pendiente(novedades[0]?.version) && novedades[0].notas?.length) {
+    const rama = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+    if (rama === 'main') {
+      release();
+      execSync('git add public/sw.js public/index.html public/novedades.json');
+    }
+    return;
+  }
   console.error(`[pre-commit] Este commit cambia public/ y falta su novedad. Agregá arriba de public/novedades.json:
   { "version": "next", "fecha": "", "notas": ["Qué cambia para quien usa la app"] }
-("next" sube patch; "next:minor" o "next:major" suben eso, al hacer el release).`);
+("next" sube patch; "next:minor" o "next:major" suben eso; en main se numera en este mismo commit).`);
   process.exit(1);
 }
 

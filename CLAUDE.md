@@ -96,11 +96,12 @@ componente con su función real y datos de ejemplo. **Al crear o cambiar un comp
   `public/novedades.json` una entrada pendiente `{ "version": "next", "fecha": "", "notas": [...] }`
   (`next` = patch, `next:minor`, `next:major`). Lo exige el pre-commit (`.githooks/pre-commit`,
   `npm run hooks` una vez por clon). Notas cortas, para quien usa la app.
-- **VERSION** (semver) en `public/sw.js` y los `?v=` de `index.html`: la numera el release con
-  `npm run bump -- patch|minor|major` (junta las pendientes). `test/version.test.mjs` verifica que
-  estén sincronizados. Un SW nuevo queda en waiting y la app ofrece "Actualizar" en un toast.
-- **Ramas**: cada cambio sale como PR hacia `pre-release`; el release `pre-release` → `main` sólo
-  cuando el usuario lo pide, preguntando patch/minor/major.
+- **VERSION** (semver) en `public/sw.js` y los `?v=` de `index.html`. **Los cambios van directo a
+  `main`** (no hay `pre-release`: ese flujo es de Gastienzos) y Cloudflare despliega cada push a
+  `main`; por eso, en `main`, el pre-commit **numera la versión en el mismo commit** (junta las
+  pendientes con su nivel). En otra rama sólo exige la novedad; `npm run bump -- patch|minor|major`
+  la numera a mano. `test/version.test.mjs` verifica que todo esté sincronizado. Un SW nuevo queda en
+  waiting y la app ofrece "Actualizar" en un toast.
 - **Fechas**: el día del ticket es el de la zona del teléfono (`hoyIso()`, nunca
   `toISOString().slice(0, 10)`).
 - `askConfirm` sólo para lo irreversible (borrar un ticket, quitar un amigo, guardar con la suma que

@@ -1,7 +1,7 @@
 # Comparame esta: diseño de la primera versión
 
-> Estado: **etapa 1 hecha** (falta elegir el modelo midiendo con fotos reales). Las
-> decisiones que estaban abiertas están al final, en "Decidido".
+> Estado: **etapa 1 hecha y desplegada** (0.1.0). Lo que se preguntó mientras se diseñaba está
+> contestado en "Decidido", al final; lo que sigue, en "Etapas".
 
 ## El pedido
 
@@ -41,8 +41,8 @@ gastos-app; su diseño estaba en `docs/diseno-precios.md` y lo que se midió de 
 - **Igual que en gastos:** `novedades.json` + VERSION semver en `sw.js` + el hook que exige
   la novedad; ramas con `pre-release` → `main`; el design system publicado en
   `/design-system`, con la skill que lo mantiene; los tests con `node --test`.
-- ❓ **Dominio.** ¿Tiene uno propio o arranca en `*.workers.dev`?
-- ❓ **Quién puede entrar.** ¿Cualquiera con Google, un tope de usuarios como en gastos
+- (decidido abajo) **Dominio.** ¿Tiene uno propio o arranca en `*.workers.dev`?
+- (decidido abajo) **Quién puede entrar.** ¿Cualquiera con Google, un tope de usuarios como en gastos
   (`MAX_USERS`) o una lista de emails?
 
 ## Lo que se reusa de Gastienzos (copiado, no compartido)
@@ -94,7 +94,7 @@ Es lo difícil: "YERBA PLAYADITO 1KG" en Carrefour y "Yerba Playadito x1000" en 
 mismo. Hay tres maneras de reconocerlo, de más segura a menos:
 
 1. **El código de barras (EAN).** Cuando dos renglones tienen el mismo EAN son el mismo
-   producto, sin preguntar. ❓ **¿De dónde sale el EAN?** La mayoría de los tickets
+   producto, sin preguntar. (decidido abajo) **¿De dónde sale el EAN?** La mayoría de los tickets
    argentinos imprimen un código interno de la cadena y no el EAN. Opciones:
    - a) leerlo del ticket cuando aparece (pocos casos);
    - b) **escanearlo con la cámara** desde el producto, en la revisión o en su ficha. En
@@ -108,7 +108,7 @@ mismo. Hay tres maneras de reconocerlo, de más segura a menos:
    (marca + producto + medida). Con eso la app busca candidatos entre los productos que ya
    existen y te pregunta "¿Es la misma?". Se junta sólo si confirmás, como en gastos.
 
-❓ **¿El catálogo es de todos o de cada grupo de amigos?** Me dijiste que se comparte entre
+(decidido abajo) **¿El catálogo es de todos o de cada grupo de amigos?** Me dijiste que se comparte entre
 amigos, pero la amistad no es transitiva: si Juli es amiga tuya y de Marce, y Marce no es
 amigo tuyo, ¿qué catálogo ven? Te propongo que **los productos, los lugares y los alias sean
 de todos** (son hechos: "la Playadito de 1 kg existe", "Carrefour Cabildo existe") y que
@@ -139,7 +139,7 @@ ticket, de quien sea, y ningún precio le llega a un desconocido.
    *Volver a ponerlo*. **Guardar** guarda el ticket y sus precios.
 
 **Topes.** Por persona, N tickets por día. Para toda la app, un presupuesto por mes en
-dólares (cada lectura anota los tokens que gastó). ❓ ¿Qué números te parecen bien?
+dólares (cada lectura anota los tokens que gastó). (decidido abajo) ¿Qué números te parecen bien?
 
 ### El modelo
 
@@ -154,12 +154,12 @@ entrada por foto + ~3.000 de salida. Se mide de verdad con tus fotos antes de el
 
 Te propongo armar un script de medición como el `medir-precios.mjs` de gastos: tus fotos más
 la verdad pasada a mano (importes y cantidades bien leídos, total, tiempo, costo). Se corren los
-tres modelos y elegís vos. ❓ ¿Tenés fotos de tickets para medir? Sirven las del ticket de
+tres modelos y elegís vos. (decidido abajo) ¿Tenés fotos de tickets para medir? Sirven las del ticket de
 Carrefour en tres fotos y las dos facturas de Nini que usó gastos, si las tenés todavía (en el
 repo quedó sólo la verdad, no las imágenes).
 
 - Se llama con el SDK oficial (`@anthropic-ai/sdk`, que wrangler empaqueta en el Worker).
-- ❓ ¿Pasa por Cloudflare AI Gateway, como en gastos, para medir tokens y costo? El gateway
+- (decidido abajo) ¿Pasa por Cloudflare AI Gateway, como en gastos, para medir tokens y costo? El gateway
   acepta Anthropic como proveedor.
 
 ## Pantallas (te sugiero estas)
@@ -182,7 +182,7 @@ Mobile primero, con la barra inferior de gastos.
 
 **Precios viejos.** Con la inflación, un precio de hace dos meses no compara contra uno de
 hoy. Te propongo que en "¿dónde está más barato?" entren sólo los de los **últimos 30 días**;
-los más viejos se ven grises, con su fecha, y no ganan "el más barato". ❓ ¿30 días te parece
+los más viejos se ven grises, con su fecha, y no ganan "el más barato". (decidido abajo) ¿30 días te parece
 bien?
 
 ## Etapas
@@ -198,15 +198,6 @@ bien?
 
 **Fuera de alcance:** cargar un precio sin ticket (a mano o con la foto de la góndola).
 
-## Preguntas abiertas (resumen)
-
-1. Dominio.
-2. Quién puede entrar (cualquiera / tope / lista).
-3. El EAN: del ticket, escaneado o las dos.
-4. Catálogo de todos + precios sólo entre amigos: ¿sí?
-5. Topes de lectura por persona y presupuesto por mes.
-6. Fotos para medir los modelos, y si pasa por AI Gateway.
-7. Precios viejos: ¿30 días?
 
 ## Decidido (26/10/2026)
 
@@ -223,7 +214,13 @@ bien?
 7. **Precios viejos:** en "¿dónde está más barato?" entran los de los últimos 30 días; los más viejos
    se ven grises.
 
-Además, en lo que no estaba dicho:
+8. **Leer en paralelo o en secuencia:** queda como está, una sola llamada por ticket con todas las fotos.
+9. **AI Gateway y topes de uso:** por ahora no.
+10. **Ramas:** los cambios van directo a `main` (el flujo con `pre-release` es de Gastienzos).
+11. **Mandar un ticket a Gastienzos:** un botón que abre el alta de Gastienzos ya completada; la persona
+    la revisa y guarda allá (sin conectar las cuentas). Los detalles, en "Etapas".
+
+Además, en lo que no estaba dicho (confirmado):
 
 - La app vive en "/" (no hay página de inicio aparte, como `/app` en Gastienzos).
 - Un producto lo corrige quien lo creó o quien tiene algún precio cargado de él.
