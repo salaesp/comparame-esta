@@ -51,6 +51,12 @@ export function revisar({ sw, html, novedades }) {
   return out;
 }
 
+// ¿El commit sube la VERSION? (sw.js de HEAD contra el que está en el índice)
+export function releaseStaged(swHead, swStaged) {
+  const a = leerVersion(swHead), b = leerVersion(swStaged);
+  return !!(a && b && a !== b);
+}
+
 function leer() {
   return { sw: readFileSync(SW, 'utf8'), html: readFileSync(HTML, 'utf8'), novedades: JSON.parse(readFileSync(NOV, 'utf8')) };
 }
@@ -73,6 +79,9 @@ function staged() {
   const files = execSync('git diff --cached --name-only', { encoding: 'utf8' }).split('\n').filter(Boolean);
   const toca = files.some((f) => f.startsWith('public/') && f !== 'public/novedades.json');
   if (!toca) return;
+  // El commit del release (npm run bump) cambia la VERSION de sw.js: pasa.
+  const git = (ref) => { try { return execSync(`git show ${ref}:public/sw.js`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
+  if (releaseStaged(git('HEAD'), git(''))) return;
   const { novedades } = leer();
   if (pendiente(novedades[0]?.version) && novedades[0].notas?.length) return;
   console.error(`[pre-commit] Este commit cambia public/ y falta su novedad. Agregá arriba de public/novedades.json:

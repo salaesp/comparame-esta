@@ -1,7 +1,7 @@
 [
   {
-    "version": "next:minor",
-    "fecha": "",
+    "version": "0.1.0",
+    "fecha": "2026-10-26",
     "notas": [
       "Primera versión: sacale fotos a un ticket (aunque sea largo, en varias fotos) y la app lee cada producto con su precio.",
       "Revisás lo leído antes de guardarlo: si la suma no da el total del ticket, te avisa.",

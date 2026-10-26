@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { revisar, subir, pendiente, nivelDe } from '../scripts/bump-ui-version.mjs';
+import { revisar, subir, pendiente, nivelDe, releaseStaged } from '../scripts/bump-ui-version.mjs';
 
 const leer = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
@@ -26,6 +26,12 @@ test('subir por nivel y las pendientes', () => {
   assert.ok(pendiente('next') && pendiente('next:major') && !pendiente('1.0.0') && !pendiente('next:mega'));
   assert.equal(nivelDe('next'), 'patch');
   assert.equal(nivelDe('next:minor'), 'minor');
+});
+
+test('el commit del release (sube la VERSION) pasa el pre-commit sin novedad pendiente', () => {
+  assert.equal(releaseStaged("const VERSION = '0.0.0';", "const VERSION = '0.1.0';"), true);
+  assert.equal(releaseStaged("const VERSION = '0.1.0';", "const VERSION = '0.1.0';"), false);
+  assert.equal(releaseStaged('', "const VERSION = '0.1.0';"), false);
 });
 
 test('el SW guarda el shell de esta versión y nunca la API', () => {
