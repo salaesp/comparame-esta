@@ -16,12 +16,12 @@ directory = "public"
 binding = "ASSETS"
 run_worker_first = ["/api/*"]
 
-# Base D1. El id sale de `npx wrangler d1 create comparame-db` (ver docs/setup.md).
+# Base D1 (comparame-db, creada en el panel de Cloudflare).
 # El schema se aplica solo en el primer request (lib/db.mjs).
 [[d1_databases]]
 binding = "DB"
 database_name = "comparame-db"
-database_id = "REEMPLAZAR-CON-EL-ID-DE-wrangler-d1-create"
+database_id = "9d03e810-4ce1-42b4-9050-77a7f71c183f"
 
 # Corre el Worker cerca de D1 y no cerca del usuario (una vuelta larga en vez de varias).
 [placement]

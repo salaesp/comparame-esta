@@ -9,8 +9,8 @@ hay build: se despliega el repo tal cual.
 npx wrangler d1 create comparame-db
 ```
 
-Copiá el `database_id` que devuelve en `wrangler.toml` (reemplaza a
-`REEMPLAZAR-CON-EL-ID-DE-wrangler-d1-create`). Las tablas se crean solas en el primer pedido
+Copiá el `database_id` que devuelve en `wrangler.toml` (ya está puesto el de la base de
+producción). Las tablas se crean solas en el primer pedido
 (`lib/db.mjs`).
 
 ## 2. El login con Google
