@@ -51,7 +51,7 @@ test('fotosError: hace falta al menos una, hasta FOTOS_MAX, y que sean imágenes
 
 test('limpiarRespuesta: se queda con lo que es un número y un texto, y nunca más descuento que lo impreso', () => {
   const l = limpiarRespuesta({
-    lugar: { cadena: '  Coto ', sucursal: null, direccion: 'Cabildo 1', cuit: null },
+    lugar: { cadena: '  Coto ', sucursal: null, direccion: 'Cabildo 1', ciudad: 'CAPITAL FEDERAL', punto_venta: '0101', cuit: null },
     fecha: '25/10/2026', total: 1500.555, subtotal: null, ahorro: null,
     renglones: [
       { foto: 2, texto: 'YERBA', cantidad: 2, unidad: 'u', precio_unitario: 500, importe: 1000, descuento: 5000, ean: null, marca: null, nombre: '', medida_cantidad: null, medida_unidad: 'kg' },
@@ -62,6 +62,8 @@ test('limpiarRespuesta: se queda con lo que es un número y un texto, y nunca m�
     avisos: ['La foto 2 está borrosa', ''],
   }, { nFotos: 2 });
   assert.equal(l.lugar.cadena, 'Coto');
+  assert.equal(l.lugar.ciudad, 'CABA');
+  assert.equal(l.lugar.punto_venta, '101');
   assert.equal(l.fecha, null); // no está en YYYY-MM-DD
   assert.equal(l.total, 1500.56);
   assert.equal(l.renglones.length, 1);

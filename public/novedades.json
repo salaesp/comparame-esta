@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.3.0",
+    "fecha": "2026-10-26",
+    "notas": [
+      "Cada lugar guarda la ciudad aparte de la dirección, y se ve en Lugares y en «¿Dónde está más barato?».",
+      "Si tus lugares son de más de una ciudad, Productos y Lugares se pueden ver de una sola (el producto te muestra lo de las otras al pie).",
+      "Si el ticket no trae la dirección del local, la revisión te avisa y la podés escribir. Mientras tanto, la app distingue la sucursal por el punto de venta de la factura.",
+      "Desde la ficha de un lugar le podés poner la dirección o la ciudad; si resulta que ya estaba cargado, se juntan en uno."
+    ]
+  },
+  {
     "version": "0.2.1",
     "fecha": "2026-10-26",
     "notas": [

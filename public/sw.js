@@ -2,8 +2,8 @@
 // cache-first; /api/* SIEMPRE va a la red (los datos viven en el server). Al cambiar
 // VERSION (semver, la sube scripts/bump-ui-version.mjs) el browser ve un SW nuevo,
 // queda en "waiting" y la app ofrece actualizar.
-const VERSION = '0.2.1';
-const RELEASED = '2026-10-26T17:30:00.068Z';
+const VERSION = '0.3.0';
+const RELEASED = '2026-10-26T18:20:47.455Z';
 const CACHE = `comparame-${VERSION}`;
 const SHELL = [
   '/',

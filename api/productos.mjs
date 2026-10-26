@@ -35,7 +35,7 @@ async function uno(userId, id) {
     [`select ${COLS} from productos where id = ?1`, [id]],
     [`select pr.id, pr.ticket_id, pr.user_id, pr.lugar_id, pr.fecha, pr.texto, pr.cantidad, pr.unidad, pr.precio_lista,
              pr.importe, pr.descuento, pr.pagado, pr.precio_unit, pr.precio_medida,
-             l.cadena, l.sucursal, l.direccion
+             l.cadena, l.sucursal, l.direccion, l.ciudad
         from precios pr left join lugares l on l.id = pr.lugar_id
        where pr.producto_id = ?1 and pr.user_id in ${visibles('?2')}
        order by pr.fecha desc`, [id, userId]],

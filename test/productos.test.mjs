@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  normTexto, lugarKey, cuitValido, medidaDe, medidaLabel, nombreKey, precioMedida, candidatos, tidyNombre, eanValido,
+  normTexto, lugarKey, lugarKeys, pvLimpio, pvLabel, ciudadLimpia, cuitValido, medidaDe, medidaLabel, nombreKey, precioMedida, candidatos, tidyNombre, eanValido,
 } from '../lib/productos.mjs';
 
 test('normTexto: sin acentos, mayúsculas ni signos, y el número separado de la unidad', () => {
@@ -17,8 +17,28 @@ test('lugarKey: con CUIT manda el CUIT; sin CUIT, la cadena; siempre con la dire
   assert.equal(lugarKey({ cuit: '30687310434', cadena: 'INC SA', direccion: 'Av Cabildo 2200' }), 'cuit 30687310434|av cabildo 2200');
   assert.equal(lugarKey({ cadena: 'Coto', direccion: '' }), 'coto|');
   assert.equal(lugarKey({ cuit: '123', cadena: 'Día', direccion: 'Mitre 10' }), 'dia|mitre 10');
+  assert.equal(lugarKey({ cuit: '30-68731043-4', cadena: 'Carrefour', punto_venta: '08188' }), 'cuit 30687310434|pv 8188');
   assert.equal(cuitValido('30687310434'), '30-68731043-4');
   assert.equal(cuitValido('12'), '');
+});
+
+test('lugarKeys: la dirección y el punto de venta (los dos si están); sin ninguno, la cadena entera', () => {
+  assert.deepEqual(lugarKeys({ cuit: '30-68731043-4', cadena: 'Carrefour', direccion: 'Av. Cabildo 2200', punto_venta: '08188', ciudad: 'CABA' }),
+    ['cuit 30687310434|av cabildo 2200', 'cuit 30687310434|pv 8188']);
+  assert.deepEqual(lugarKeys({ cadena: 'Nini', punto_venta: '0101' }), ['nini|pv 101']);
+  assert.deepEqual(lugarKeys({ cadena: 'Coto', ciudad: 'Rosario' }), ['coto|']); // la ciudad no entra
+  assert.equal(pvLimpio('P.V. Nro. 01117'), '1117');
+  assert.equal(pvLimpio('000'), '');
+  assert.equal(pvLimpio('1234567'), '');
+  assert.equal(pvLabel('101'), 'PV 0101');
+  assert.equal(pvLabel(''), '');
+});
+
+test('ciudadLimpia: CABA se escribe de una sola forma; lo demás, con mayúscula inicial', () => {
+  for (const c of ['C.A.B.A.', 'Capital Federal', 'CIUDAD AUTONOMA DE BUENOS AIRES', 'caba']) assert.equal(ciudadLimpia(c), 'CABA');
+  assert.equal(ciudadLimpia('VILLA ALLENDE'), 'Villa Allende');
+  assert.equal(ciudadLimpia('  Rosario '), 'Rosario');
+  assert.equal(ciudadLimpia(null), '');
 });
 
 test('medidaDe pasa a g, ml o u; medidaLabel la vuelve a decir', () => {

@@ -1,0 +1,63 @@
+// Lugares del catálogo (sólo con sesión). El catálogo es de todos; los tickets, de cada
+// uno y sus amigos.
+//   PATCH /api/lugares/:id {sucursal, direccion, ciudad, juntar?} -> corregir un lugar
+//
+// Con la dirección nueva puede aparecer que el lugar ya existía (un Carrefour cargado sin
+// dirección, por su punto de venta, y el mismo con dirección): contesta 409 con `otro` y,
+// si se vuelve a mandar con `juntar` = el id de ése, éste se junta en aquél (sus tickets,
+// precios y claves pasan al otro, que se completa con lo que no tenga) y se borra.
+import { json, error, readJson, segs } from '../lib/http.mjs';
+import { sessionUser } from '../lib/auth.mjs';
+import { sql, txBatch } from '../lib/db.mjs';
+import { lugarKeys, ciudadLimpia } from '../lib/productos.mjs';
+import { LUGAR_COLS } from '../lib/catalogo.mjs';
+
+const texto = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : null);
+
+export default async function (req) {
+  const me = await sessionUser(req);
+  if (!me) return error('no autenticado', 401);
+  const [, , id, s3] = segs(req);
+  if (id && !s3 && req.method === 'PATCH') return editar(me.userId, id, await readJson(req));
+  return error('método no permitido', 405);
+}
+
+// Lo corrige quien lo creó o quien cargó algún ticket ahí (como un producto).
+async function editar(userId, id, b) {
+  const [l] = await sql(
+    `select ${LUGAR_COLS} from lugares where id = ?1
+        and (creado_por = ?2 or exists (select 1 from tickets where lugar_id = ?1 and user_id = ?2))`,
+    [id, userId],
+  );
+  if (!l) return error('no encontrado', 404);
+  const sucursal = texto(b?.sucursal, 60) ?? l.sucursal;
+  const direccion = texto(b?.direccion, 120) ?? l.direccion;
+  const ciudad = b?.ciudad != null ? ciudadLimpia(b.ciudad) : l.ciudad;
+  const clave = direccion ? lugarKeys({ cuit: l.cuit, cadena: l.cadena, direccion })[0] : null;
+  const [duenio] = clave ? await sql('select lugar_id from lugar_claves where clave = ?1', [clave]) : [];
+
+  if (duenio && duenio.lugar_id !== id) {
+    const [otro] = await sql(`select ${LUGAR_COLS} from lugares where id = ?1`, [duenio.lugar_id]);
+    if (b?.juntar !== otro.id) return error('Ya hay un lugar con esa dirección.', 409, { otro: { ...otro, cadena_key: undefined } });
+    // Lo que el otro no tiene, lo pone éste (con lo recién escrito).
+    const LLENAR = ['sucursal', 'ciudad', 'punto_venta', 'cuit'];
+    const [, , , , [row]] = await txBatch([
+      ['update tickets set lugar_id = ?1 where lugar_id = ?2', [otro.id, id]],
+      ['update precios set lugar_id = ?1 where lugar_id = ?2', [otro.id, id]],
+      ['update lugar_claves set lugar_id = ?1 where lugar_id = ?2', [otro.id, id]],
+      ['delete from lugares where id = ?1', [id]],
+      [`update lugares set ${LLENAR.map((c, i) => `${c} = case when ${c} = '' then ?${i + 2} else ${c} end`).join(', ')}
+         where id = ?1 returning ${LUGAR_COLS}`, [otro.id, sucursal, ciudad, l.punto_venta, l.cuit]],
+    ]);
+    return json({ ok: true, lugar: { ...row, cadena_key: undefined }, juntado: otro.id });
+  }
+
+  const stmts = [[`update lugares set sucursal = ?2, direccion = ?3, ciudad = ?4 where id = ?1 returning ${LUGAR_COLS}`,
+    [id, sucursal, direccion, ciudad]]];
+  // La clave vieja queda: si otro ticket trae la dirección como estaba, sigue siendo éste.
+  if (clave) stmts.push(['insert into lugar_claves (clave, lugar_id) values (?1, ?2) on conflict (clave) do nothing', [clave, id]]);
+  const [[row]] = await txBatch(stmts);
+  return json({ ok: true, lugar: { ...row, cadena_key: undefined } });
+}
+
+export const config = { path: '/api/lugares/:id' };

@@ -8,11 +8,12 @@ import * as authCallback from '../api/auth-callback.mjs';
 import * as authLogin from '../api/auth-login.mjs';
 import * as authLogout from '../api/auth-logout.mjs';
 import * as boot from '../api/boot.mjs';
+import * as lugares from '../api/lugares.mjs';
 import * as productos from '../api/productos.mjs';
 import * as tickets from '../api/tickets.mjs';
 import { setDbEnv } from '../lib/db.mjs';
 
-const MODULES = [amigos, authCallback, authLogin, authLogout, boot, productos, tickets];
+const MODULES = [amigos, authCallback, authLogin, authLogout, boot, lugares, productos, tickets];
 
 // [segmentos del patrón, handler]. Se arma una vez por isolate. Las rutas fijas antes
 // que las de parámetro, así /api/tickets/leer no cae en /api/tickets/:id de otro handler.

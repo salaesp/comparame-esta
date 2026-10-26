@@ -96,6 +96,7 @@ const IC = {
   up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  pin: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   out: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   google: '',
 };
@@ -132,7 +133,7 @@ async function apiFetch(path, { method = 'GET', body, signal } = {}) {
 const state = {
   user: null, amigos: [], users: new Map(), links: 0, desde: '', lector: false,
   tickets: [], precios: [], productos: new Map(), lugares: new Map(),
-  view: 'inicio', q: '',
+  view: 'inicio', q: '', ciudad: '',
 };
 const FRESCO_DIAS = 30; // un precio más viejo no compara (la inflación): se ve gris
 
@@ -155,6 +156,45 @@ function lugarNombre(l) {
   return [l.cadena || 'Sin nombre', l.sucursal].filter(Boolean).join(' · ');
 }
 const lugarDe = (id) => state.lugares.get(id);
+// "PV 0101": el punto de venta como se lee en una factura (lib/productos.mjs pvLabel).
+const pvLabel = (pv) => (pv ? `PV\u00a0${String(pv).padStart(4, '0')}` : '');
+// Dónde queda: la dirección y la ciudad; sin dirección, el punto de venta que la distingue.
+function lugarDonde(l) {
+  if (!l) return '';
+  return [l.direccion || pvLabel(l.punto_venta), l.ciudad].filter(Boolean).join(', ');
+}
+
+// ---------- La ciudad ----------
+// Con lugares de más de una ciudad, Productos y Lugares se filtran por una (la del
+// teléfono: localStorage['cmp:ciudad']). Los lugares sin ciudad sólo se ven en "Todas".
+const CIUDAD_KEY = 'cmp:ciudad';
+function ciudadGuardada() { try { return localStorage.getItem(CIUDAD_KEY) || ''; } catch { return ''; } }
+function setCiudad(c) {
+  state.ciudad = c;
+  try { if (c) localStorage.setItem(CIUDAD_KEY, c); else localStorage.removeItem(CIUDAD_KEY); } catch { /* sin storage */ }
+}
+// Las ciudades de los lugares que se ven, de la que más tickets tiene a la que menos.
+function ciudades() {
+  const n = new Map();
+  for (const t of state.tickets) {
+    const c = lugarDe(t.lugar_id)?.ciudad;
+    if (c) n.set(c, (n.get(c) || 0) + 1);
+  }
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
+}
+// La ciudad elegida, si sigue habiendo más de una (si no, no se filtra).
+function ciudadActiva() {
+  const cs = ciudades();
+  return cs.length > 1 && cs.includes(state.ciudad) ? state.ciudad : '';
+}
+const enCiudad = (lugarId, ciudad = ciudadActiva()) => !ciudad || lugarDe(lugarId)?.ciudad === ciudad;
+function ciudadesHtml() {
+  const cs = ciudades();
+  if (cs.length < 2) return '';
+  const act = ciudadActiva();
+  const b = (c, label) => `<button type="button" class="ciudad${act === c ? ' active' : ''}" data-ciudad="${esc(c)}" aria-pressed="${act === c}">${esc(label)}</button>`;
+  return `<div class="ciudades" role="group" aria-label="Ciudad">${b('', 'Todas')}${cs.map((c) => b(c, c)).join('')}</div>`;
+}
 function productoNombre(p) {
   if (!p) return '';
   return [p.marca, p.nombre].filter(Boolean).join(' ') || p.nombre;
@@ -186,10 +226,10 @@ function porLugar(precios) {
 const preciosDe = (pid) => state.precios.filter((pr) => pr.producto_id === pid);
 
 // Cada producto con lo que se sabe: el más barato fresco, en cuántos lugares, lo último.
-function resumenProductos() {
+function resumenProductos(ciudad = '') {
   const by = new Map();
   for (const pr of state.precios) {
-    if (!pr.producto_id) continue;
+    if (!pr.producto_id || !enCiudad(pr.lugar_id, ciudad)) continue;
     if (!by.has(pr.producto_id)) by.set(pr.producto_id, []);
     by.get(pr.producto_id).push(pr);
   }
@@ -569,16 +609,17 @@ function productosHtml() {
   }
   return `<label class="buscador"><span class="sr-only">Buscar un producto</span>${ic('search', 20)}
       <input type="search" id="buscar-q" placeholder="Buscá un producto" autocomplete="off" value="${esc(state.q)}"></label>
-    <div class="tcard" id="prod-list">${productosListHtml(todos)}</div>`;
+    ${ciudadesHtml()}
+    <div class="tcard" id="prod-list">${productosListHtml()}</div>`;
 }
-function productosListHtml(todos = resumenProductos()) {
+function productosListHtml(todos = resumenProductos(ciudadActiva())) {
   const words = normQ(state.q).split(/\s+/).filter(Boolean);
   const hit = (r) => {
     const t = normQ(`${r.producto.marca} ${r.producto.nombre} ${productoSub(r.producto)}`);
     return words.every((w) => t.includes(w));
   };
   const rows = todos.filter(hit).sort((a, b) => (b.ultimo.fecha > a.ultimo.fecha ? 1 : b.ultimo.fecha < a.ultimo.fecha ? -1 : 0));
-  if (!rows.length) return `<p class="note">No hay ningún producto con «${esc(state.q)}».</p>`;
+  if (!rows.length) return `<p class="note">${state.q ? `No hay ningún producto con «${esc(state.q)}»` : 'No hay productos'}${ciudadActiva() ? ` en ${esc(ciudadActiva())}` : ''}.</p>`;
   return rows.slice(0, 200).map(productoRowHtml).join('');
 }
 function wireBuscador() {
@@ -597,29 +638,35 @@ async function openProducto(pid) {
   const paint = () => {
     const p = data.producto;
     if (!p) return `${modalHead('Producto')}<p class="note">No encontré el producto.</p>`;
-    const lugares = porLugar(data.precios);
+    // Con una ciudad elegida, se compara ahí; lo de las otras va aparte, al pie.
+    const ciudad = ciudadActiva();
+    const ciudadDe = (pr) => lugarDe(pr.lugar_id)?.ciudad ?? pr.ciudad;
+    const lugares = porLugar(data.precios.filter((pr) => !ciudad || ciudadDe(pr) === ciudad));
+    const otras = ciudad ? porLugar(data.precios.filter((pr) => ciudadDe(pr) !== ciudad)) : [];
     const frescos = lugares.filter((l) => l.fresco);
     const viejos = lugares.filter((l) => !l.fresco);
     const mejor = frescos[0];
     const fila = (x, i) => {
       const pr = x.precio;
-      const l = lugarDe(pr.lugar_id) || { cadena: pr.cadena, sucursal: pr.sucursal };
-      return `<button type="button" class="mrow txrow${x.fresco ? '' : ' mrow--old'}" data-ticket="${esc(pr.ticket_id)}">
+      const l = lugarDe(pr.lugar_id) || { cadena: pr.cadena, sucursal: pr.sucursal, direccion: pr.direccion, ciudad: pr.ciudad };
+      const donde = lugarDonde(l);
+      return `<button type="button" class="mrow txrow${x.fresco && !x.otra ? '' : ' mrow--old'}" data-ticket="${esc(pr.ticket_id)}">
         ${lugarIc(l)}
         <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
-          <span class="row__meta"><span class="movchips">${x.fresco && i === 0 && frescos.length > 1 ? '<span class="chip chip--best">Más barato</span>' : ''}${whoChip(pr.user_id)}<span class="chip">${esc(fmtFecha(pr.fecha))}</span></span></span></span>
+          <span class="row__meta"><span class="movchips">${x.fresco && !x.otra && i === 0 && frescos.length > 1 ? '<span class="chip chip--best">Más barato</span>' : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${whoChip(pr.user_id)}<span class="chip">${esc(fmtFecha(pr.fecha))}</span></span></span></span>
         <span class="mrow__right"><span class="mrow__amt">${fmtMoney(comparable(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
       </button>`;
     };
     const hist = [...data.precios].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
     return `${modalHead(productoNombre(p), productoSub(p))}
-      ${mejor ? `<div class="prodhero">
+      ${!mejor && otras.length ? `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días en ${esc(ciudad)}.</p>` : mejor ? `<div class="prodhero">
           <span class="lbl">${frescos.length > 1 ? 'Más barato hoy' : 'Último precio'}</span>
           <span class="prodhero__amt">${fmtMoney(comparable(mejor.precio))}</span>
           <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(comparable(frescos[frescos.length - 1].precio) - comparable(mejor.precio))} menos que en el más caro` : ''}</span>
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
-      ${frescos.length ? `<span class="setsub">¿Dónde está más barato?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
+      ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
+      ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
       ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(comparable(pr))}</b></button>`).join('')}</div></details>` : ''}
       <div class="prodfoot">
         ${p.ean ? `<span class="chip">Código ${esc(p.ean)}</span>` : ''}
@@ -719,40 +766,92 @@ function openProductoEdit(pid) {
 // ---------- Lugares ----------
 function lugaresHtml() {
   const by = new Map();
+  const ciudad = ciudadActiva();
   for (const t of state.tickets) {
-    if (!t.lugar_id) continue;
+    if (!t.lugar_id || !enCiudad(t.lugar_id, ciudad)) continue;
     const cur = by.get(t.lugar_id) || { n: 0, ultimo: '' };
     cur.n++; if (t.fecha > cur.ultimo) cur.ultimo = t.fecha;
     by.set(t.lugar_id, cur);
   }
   // En cuántos productos cada lugar es el más barato (entre los precios frescos).
   const gana = new Map();
-  for (const r of resumenProductos()) {
+  for (const r of resumenProductos(ciudad)) {
     const fr = r.lugares.filter((x) => x.fresco);
     if (fr.length > 1) gana.set(fr[0].lugar_id, (gana.get(fr[0].lugar_id) || 0) + 1);
   }
   const rows = [...by.entries()].sort((a, b) => (b[1].ultimo > a[1].ultimo ? 1 : -1));
-  if (!rows.length) return `<div class="tcard">${emptyState('Todavía no hay lugares', 'Cada ticket suma el lugar donde compraste.', [{ label: 'Sacar una foto', attr: 'data-nuevo' }])}</div>`;
-  return `<div class="tcard">${rows.map(([id, s]) => {
+  if (!rows.length && !state.tickets.length) return `<div class="tcard">${emptyState('Todavía no hay lugares', 'Cada ticket suma el lugar donde compraste.', [{ label: 'Sacar una foto', attr: 'data-nuevo' }])}</div>`;
+  return `${ciudadesHtml()}<div class="tcard">${rows.map(([id, s]) => {
     const l = lugarDe(id);
+    const donde = lugarDonde(l);
     return `<button type="button" class="mrow txrow" data-lugar="${esc(id)}">
       ${lugarIc(l)}
       <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
-        <span class="row__meta"><span class="movchips">${gana.get(id) ? `<span class="chip chip--best">${gana.get(id)} más ${gana.get(id) === 1 ? 'barato' : 'baratos'}</span>` : ''}<span class="chip">${esc(fmtFecha(s.ultimo))}</span></span></span></span>
+        <span class="row__meta"><span class="movchips">${gana.get(id) ? `<span class="chip chip--best">${gana.get(id)} más ${gana.get(id) === 1 ? 'barato' : 'baratos'}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}<span class="chip">${esc(fmtFecha(s.ultimo))}</span></span></span></span>
       <span class="mrow__right"><span class="mrow__amt">${s.n} ${s.n === 1 ? 'ticket' : 'tickets'}</span></span>
     </button>`;
-  }).join('')}</div>`;
+  }).join('') || `<p class="note">No hay lugares en ${esc(ciudad)}.</p>`}</div>`;
 }
+// Lo corrige quien lo creó o quien cargó un ticket ahí (como en api/lugares.mjs).
+const lugarEditable = (l) => !!l && (l.creado_por === state.user?.id || state.tickets.some((t) => t.lugar_id === l.id && t.user_id === state.user?.id));
 function openLugar(id) {
-  const l = lugarDe(id);
-  const tks = state.tickets.filter((t) => t.lugar_id === id);
-  const aca = resumenProductos().filter((r) => r.lugares.some((x) => x.lugar_id === id));
-  const masBarato = aca.filter((r) => { const fr = r.lugares.filter((x) => x.fresco); return fr.length > 1 && fr[0].lugar_id === id; });
   openModal({
-    render: () => `${modalHead(lugarNombre(l), [l?.direccion, l?.cuit ? `CUIT ${l.cuit}` : ''].filter(Boolean).join(' · '))}
+    render: () => {
+      const l = lugarDe(id);
+      const tks = state.tickets.filter((t) => t.lugar_id === id);
+      const aca = resumenProductos().filter((r) => r.lugares.some((x) => x.lugar_id === id));
+      const masBarato = aca.filter((r) => { const fr = r.lugares.filter((x) => x.fresco); return fr.length > 1 && fr[0].lugar_id === id; });
+      return `${modalHead(lugarNombre(l), [lugarDonde(l), l?.cuit ? `CUIT ${l.cuit}` : ''].filter(Boolean).join(' · '))}
+      ${l?.direccion ? `<p class="lugardonde">${ic('pin', 18)}<span>${esc(lugarDonde(l))}${l.cuit ? ` · CUIT ${esc(l.cuit)}` : ''}</span></p>` : ''}
+      ${l && !l.direccion ? `<div class="control">${ic('pin', 20)}<span><b>Todavía no tiene dirección.</b> ${l.punto_venta ? `Lo reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : 'Sin ella, todas las sucursales de la cadena son una.'}
+        ${lugarEditable(l) ? `<button type="button" class="set__btn control__btn" data-lugar-edit="${esc(id)}">Ponerle la dirección</button>` : ''}</span></div>` : ''}
       ${masBarato.length ? `<span class="setsub">Acá está más barato</span><div class="gcard">${masBarato.map(productoRowHtml).join('')}</div>` : ''}
       <span class="setsub">Tickets</span><div class="gcard">${tks.map(ticketRowHtml).join('')}</div>
-      ${aca.length ? `<span class="setsub">Productos con precio acá (${aca.length})</span><div class="gcard">${aca.map(productoRowHtml).join('')}</div>` : ''}`,
+      ${aca.length ? `<span class="setsub">Productos con precio acá (${aca.length})</span><div class="gcard">${aca.map(productoRowHtml).join('')}</div>` : ''}
+      ${lugarEditable(l) && l.direccion ? `<div class="prodfoot prodfoot--end"><button type="button" class="set__btn" data-lugar-edit="${esc(id)}">${ic('edit', 18)} Corregir el lugar</button></div>` : ''}`;
+    },
+  });
+}
+// Corregir un lugar: sucursal, dirección y ciudad. Si con la dirección resulta que ya
+// estaba (cargado por otro punto de venta, o sin dirección), se ofrece juntarlos.
+function openLugarEdit(id) {
+  const l = lugarDe(id);
+  if (!l) return;
+  const sh = openSheet({
+    title: lugarNombre(l),
+    body: `<div class="accf">
+      <label class="accf__field"><span>Sucursal</span><input type="text" id="le-sucursal" value="${esc(l.sucursal || '')}" maxlength="60" placeholder="Opcional"></label>
+      <label class="accf__field"><span>Dirección</span><input type="text" id="le-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
+      <label class="accf__field"><span>Ciudad</span><input type="text" id="le-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
+      <p class="accf__hint">El lugar es el mismo para todos: con la dirección se distingue una sucursal de otra.</p>
+    </div>`,
+    foot: '<button type="button" class="mvf__submit" id="le-ok">Guardar</button>',
+    onMount: (el) => el.querySelector('#le-ok').addEventListener('click', async () => {
+      const btn = el.querySelector('#le-ok');
+      const body = { sucursal: el.querySelector('#le-sucursal').value, direccion: el.querySelector('#le-dir').value, ciudad: el.querySelector('#le-ciudad').value };
+      btn.classList.add('mvf__submit--busy'); btn.disabled = true;
+      const listo = async (d) => {
+        sh.close();
+        await reload();
+        if (d.juntado) { openLugar(d.juntado); toast('✓ Quedaron en un solo lugar'); } else { repaintModal(); toast('✓ Lugar corregido'); }
+      };
+      try {
+        await listo(await apiFetch(`/api/lugares/${encodeURIComponent(id)}`, { method: 'PATCH', body }));
+      } catch (e) {
+        btn.classList.remove('mvf__submit--busy'); btn.disabled = false;
+        if (e.status === 409 && e.data?.otro) {
+          const o = e.data.otro;
+          const ok = await askConfirm('Ese lugar ya está', {
+            text: `${lugarNombre(o)}${lugarDonde(o) ? `, ${lugarDonde(o)}` : ''}, ya está cargado. ¿Los junto? Los tickets de los dos quedan en uno solo.`,
+            ok: 'Juntarlos', cancel: 'No', icon: 'warn',
+          });
+          if (!ok) return;
+          try { await listo(await apiFetch(`/api/lugares/${encodeURIComponent(id)}`, { method: 'PATCH', body: { ...body, juntar: o.id } })); } catch (e2) { if (e2.status !== 401) toast(e2.message, { icon: 'error' }); }
+          return;
+        }
+        if (e.status !== 401) toast(e.message, { icon: 'error' });
+      }
+    }),
   });
 }
 
@@ -977,6 +1076,12 @@ function fechaRaraHtml(f) {
   return `<div class="control control--no">${ic('warn', 20)}<span><b>La fecha es del ${esc(fmtFechaLarga(f))}</b>, hace ${diasDesde(f)} días. ¿Está bien?
     ${arreglo ? `<button type="button" class="set__btn fecha-fix" data-fecha-fix="${esc(arreglo)}">Es del ${esc(fmtFechaLarga(arreglo))}</button>` : ''}</span></div>`;
 }
+// Sin la dirección no se sabe qué sucursal es: se avisa, con cómo arreglarlo.
+function sinDireccionHtml(l) {
+  if (!l.cadena || l.direccion) return '';
+  return `<div class="control">${ic('pin', 20)}<span><b>No encontré la dirección del local.</b> Sacale una foto también a la parte de arriba del ticket, o escribila: con ella se distingue una sucursal de otra.${l.punto_venta ? ` Mientras tanto la reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : ''}
+    <button type="button" class="set__btn control__btn" data-rev-lugar>Escribir la dirección</button></span></div>`;
+}
 function revisionHtml() {
   const l = rev.lugar;
   const rep = rev.descartados.filter((d) => d.motivo === 'repetido');
@@ -986,13 +1091,14 @@ function revisionHtml() {
       <button type="button" class="mrow txrow" data-rev-lugar>
         ${lugarIc(l)}
         <span class="mrow__text"><span class="mrow__title">${esc(l.cadena ? lugarNombre(l) : 'Falta el lugar')}</span>
-          <span class="row__meta"><span class="movchips">${l.existe ? '<span class="chip chip--best">Ya está</span>' : l.cadena ? '<span class="chip">Nuevo lugar</span>' : '<span class="chip chip--neg">Tocá para ponerlo</span>'}${l.direccion ? `<span class="chip">${esc(l.direccion)}</span>` : ''}</span></span></span>
+          <span class="row__meta"><span class="movchips">${l.existe ? '<span class="chip chip--best">Ya está</span>' : l.cadena ? '<span class="chip">Nuevo lugar</span>' : '<span class="chip chip--neg">Tocá para ponerlo</span>'}${lugarDonde(l) ? `<span class="chip">${esc(lugarDonde(l))}</span>` : ''}</span></span></span>
         <span class="mrow__right">${ic('edit', 18)}</span>
       </button>
       <label class="mrow txrow revfecha"><span class="mrow__ic" aria-hidden="true">${ic('receipt', 20)}</span>
         <span class="mrow__text"><span class="mrow__title">Fecha</span></span>
         <input type="date" id="rev-fecha" value="${esc(rev.fecha)}" max="${hoyIso()}"></label>
     </div>
+    ${sinDireccionHtml(l)}
     ${fechaRaraHtml(rev.fecha)}
     ${controlHtml()}
     ${rev.avisos.length ? `<ul class="avisos">${rev.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
@@ -1026,16 +1132,18 @@ function editLugar() {
       <label class="accf__field"><span>Comercio</span><input type="text" id="lg-cadena" value="${esc(l.cadena || '')}" maxlength="60" placeholder="Carrefour, Coto, Día…"></label>
       <label class="accf__field"><span>Sucursal</span><input type="text" id="lg-sucursal" value="${esc(l.sucursal || '')}" maxlength="60" placeholder="Opcional"></label>
       <label class="accf__field"><span>Dirección</span><input type="text" id="lg-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
-      <p class="accf__hint">Con la dirección se distingue una sucursal de otra.</p>
+      <label class="accf__field"><span>Ciudad</span><input type="text" id="lg-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
+      <p class="accf__hint">Con la dirección se distingue una sucursal de otra.${l.punto_venta ? ` Sin ella, la reconozco por el punto de venta del ticket (${esc(pvLabel(l.punto_venta))}).` : ''}</p>
     </div>`,
     foot: '<button type="button" class="mvf__submit" id="lg-ok">Listo</button>',
     onMount: (el) => el.querySelector('#lg-ok').addEventListener('click', () => {
       const cadena = el.querySelector('#lg-cadena').value.trim();
       if (!cadena) { toast('Falta el nombre del comercio.', { icon: 'error' }); return; }
-      const nuevo = { cadena, sucursal: el.querySelector('#lg-sucursal').value.trim(), direccion: el.querySelector('#lg-dir').value.trim() };
-      const cambio = nuevo.cadena !== l.cadena || nuevo.sucursal !== (l.sucursal || '') || nuevo.direccion !== (l.direccion || '');
-      // Si se cambió, ya no es el lugar que se encontró: el server lo busca o lo crea.
-      if (cambio) rev.lugar = { ...nuevo, cuit: l.cuit || '', existe: false };
+      const nuevo = { cadena, sucursal: el.querySelector('#lg-sucursal').value.trim(), direccion: el.querySelector('#lg-dir').value.trim(), ciudad: el.querySelector('#lg-ciudad').value.trim() };
+      // Otro comercio u otra dirección ya no es el lugar que se encontró: el server lo busca
+      // o lo crea. La sucursal o la ciudad sólo le completan lo que no tenga.
+      const otro = nuevo.cadena !== l.cadena || nuevo.direccion !== (l.direccion || '');
+      rev.lugar = { ...l, ...nuevo, ...(otro ? { id: undefined, existe: false } : {}) };
       sh.close();
       repaintModal();
     }),
@@ -1163,7 +1271,12 @@ async function guardarRevision(btn, forzar = false) {
   }
   const body = {
     fecha,
-    lugar: rev.lugar.existe ? { id: rev.lugar.id } : { cadena: rev.lugar.cadena, sucursal: rev.lugar.sucursal || '', direccion: rev.lugar.direccion || '', cuit: rev.lugar.cuit || '' },
+    // Con id, el que ya existe; lo demás le completa lo que no tenga.
+    lugar: {
+      ...(rev.lugar.existe ? { id: rev.lugar.id } : {}),
+      cadena: rev.lugar.cadena || '', sucursal: rev.lugar.sucursal || '', direccion: rev.lugar.direccion || '',
+      ciudad: rev.lugar.ciudad || '', punto_venta: rev.lugar.punto_venta || '', cuit: rev.lugar.cuit || '',
+    },
     total: rev.total, n_fotos: rev.nFotos, modelo: rev.modelo,
     ...(forzar ? { forzar: true } : {}),
     renglones: rev.renglones.map((r) => ({
@@ -1312,6 +1425,10 @@ document.addEventListener('click', (e) => {
   if (prod && prod.dataset.producto) { openProducto(prod.dataset.producto); return; }
   const tk = t.closest('[data-ticket]');
   if (tk) { openTicket(tk.dataset.ticket); return; }
+  const le = t.closest('[data-lugar-edit]');
+  if (le) { openLugarEdit(le.dataset.lugarEdit); return; }
+  const cd = t.closest('[data-ciudad]');
+  if (cd) { setCiudad(cd.dataset.ciudad); render(); return; }
   const lg = t.closest('[data-lugar]');
   if (lg) { openLugar(lg.dataset.lugar); return; }
   // El link a Gastienzos se abre solo (es un <a>); acá sólo se anota que se mandó.
@@ -1375,6 +1492,7 @@ async function boot() {
     return;
   }
   setData(d);
+  state.ciudad = ciudadGuardada();
   document.querySelectorAll('.avatar-btn').forEach((b) => { b.innerHTML = avatarInner(state.user); });
   showView('inicio', { scroll: false });
   const amigo = new URLSearchParams(location.search).get('amigo');
@@ -1406,7 +1524,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

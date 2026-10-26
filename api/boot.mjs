@@ -25,7 +25,7 @@ export default async function (req) {
         from precios where user_id in ${V} and fecha >= ?2`, [me.userId, desde]],
     [`select id, nombre, marca, medida, medida_unidad, ean, creado_por from productos
        where id in (select producto_id from precios where user_id in ${V} and fecha >= ?2)`, [me.userId, desde]],
-    [`select id, cadena, sucursal, direccion, cuit from lugares
+    [`select id, cadena, sucursal, direccion, ciudad, punto_venta, cuit, creado_por from lugares
        where id in (select lugar_id from tickets where user_id in ${V} and fecha >= ?2)`, [me.userId, desde]],
     [`select count(*) as n from links_amigo where user_id = ?1 and revocado_at is null and aceptado_por is null
         and expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`, [me.userId]],

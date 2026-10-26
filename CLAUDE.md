@@ -28,6 +28,15 @@ Toda la UI y los textos van en castellano rioplatense.
   ficha de un producto ("¿Dónde está más barato?": el último precio de cada lugar, del más barato al
   más caro; los de más de `FRESCO_DIAS` (30) días, grises), Lugares y la ficha de un ticket. Se
   compara por **kg, litro o unidad de la medida** (`precio_medida`) cuando se sabe; si no, por unidad.
+- **Los lugares** (`lib/catalogo.mjs` `buscarLugar`/`completarLugarStmts`): Claude copia la ciudad y
+  el punto de venta (la parte de adelante del número de factura); un ticket se reconoce por la
+  dirección y, sin ella, por el punto de venta (una sucursal puede tener varios, uno por caja: se
+  suman todos), y cada ticket le completa al lugar lo que no tenga. Sin dirección, la revisión avisa
+  (`sinDireccionHtml`). La ficha del lugar la corrige (`PATCH /api/lugares/:id`, quien lo creó o
+  cargó ahí): con una dirección que ya es de otro, contesta 409 con `otro` y con `juntar` pasa sus
+  tickets, precios y claves a ése. Con lugares de más de una ciudad, Productos y Lugares se filtran
+  por una (`ciudadesHtml`, `localStorage['cmp:ciudad']`; la ficha del producto pone las otras al
+  pie). La ciudad se escribe de una forma (`ciudadLimpia`: "Capital Federal" es CABA).
 - **Mandar a Gastienzos**: en la ficha de un ticket propio (`gzBotonHtml`) y como acción del toast al
   guardarlo, un link a `https://gastienzos.com.ar/app?add=1&monto=&titulo=&fecha=` (`gastienzosUrl`:
   lo pagado, la cadena, la fecha) que abre el alta de Gastienzos completada (allá lo lee
@@ -38,8 +47,10 @@ Toda la UI y los textos van en castellano rioplatense.
 
 ## Los datos (`lib/schema.mjs`)
 
-- **El catálogo es de todos**: `lugares` (una sucursal; `lugar_key` = CUIT + dirección, o cadena +
-  dirección), `productos` (nombre, marca, medida en g/ml/u, EAN) y `alias` (cómo escribe cada
+- **El catálogo es de todos**: `lugares` (una sucursal, con `ciudad` y `punto_venta` aparte de la
+  dirección), `lugar_claves` (todas las claves de cada lugar, `lugarKeys` de `lib/productos.mjs`:
+  CUIT —o, sin él, la cadena— + la dirección y + cada punto de venta que apareció; sin ninguno de
+  los dos, la cadena entera; la ciudad no entra), `productos` (nombre, marca, medida en g/ml/u, EAN) y `alias` (cómo escribe cada
   cadena un producto: `cadena_key` + `texto_key` → producto; lo último que se confirmó gana).
 - **Lo de cada uno**: `tickets` y `precios` (un renglón: cantidad, unidad u/kg, `precio_lista`,
   `importe`, `descuento`, `pagado`, `precio_unit`, `precio_medida`). Los ve quien los cargó y sus
@@ -66,14 +77,15 @@ Igual que Gastienzos, sin la herencia de Netlify: un **Worker de Cloudflare** (`
 rutea `/api/*` a los handlers de `api/` (`(Request) → Response`, cada uno con su
 `export const config = { path }`), la lógica pura vive en `lib/` y `public/` se sirve como assets.
 **D1** (`lib/db.mjs`: `sql`, `txBatch`; SQLite directo con `?1`), el schema se aplica solo (hash en
-`schema_meta`, la guarda viaja en el primer batch). `/api/boot` trae todo lo de los últimos
+`schema_meta`, la guarda viaja en el primer batch). Una columna nueva en una tabla que ya existe va
+en su create table y también en `MIGRATIONS` (las ALTER que faltan corren con la versión). `/api/boot` trae todo lo de los últimos
 `BOOT_DIAS` (180) días y las pantallas se arman en memoria; la ficha de un producto pide su
 historial entero.
 
 ```
 public/   index.html (la app en "/"), app.js, styles.css (la capa genérica de "Suave"),
           app.css (lo propio), sw.js, manifest, novedades.json, design-system/
-api/      auth-login, auth-callback, auth-logout, boot, amigos, tickets, productos
+api/      auth-login, auth-callback, auth-logout, boot, amigos, tickets, productos, lugares
 lib/      http, db, schema, auth, cupo, amigos, lector, ticket, productos, catalogo
 scripts/  bump-ui-version.mjs, medir-modelos.mjs
 test/     node --test; los de server contra SQLite real (test/helpers/d1.mjs)

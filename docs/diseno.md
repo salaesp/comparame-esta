@@ -65,7 +65,8 @@ users            id, email, name, picture, created_at
 friendships      user_a, user_b, created_at                 (a < b, una fila por par)
 friend_invites   inviter_id, token_hash, expires_at, accepted_by, …
 
-lugares          id, cadena, sucursal, direccion, cuit, creado_por
+lugares          id, cadena, sucursal, direccion, ciudad, punto_venta, cuit, creado_por
+lugar_claves     clave → lugar_id                           (dirección y puntos de venta)
 productos        id, nombre, marca, medida, unidad_medida (g|kg|ml|l|u), ean, creado_por
 alias            cadena, texto_ticket → producto_id         (cómo lo escribe el ticket de esa cadena)
 
@@ -79,7 +80,13 @@ precios          id, ticket_id, user_id, lugar_id, fecha, producto_id (null = si
   sucursal. Un lugar es **una sucursal** ("Carrefour · Av. Cabildo 2200"), y la `cadena`
   ("Carrefour") los agrupa. Así se puede comparar entre cadenas o entre sucursales. Si el CUIT
   y la dirección coinciden con uno que ya existe, es ese; si no, se crea y lo confirmás en la
-  revisión.
+  revisión. **Sin dirección** (hay tickets que no la traen), el **punto de venta** de la factura
+  lo distingue: con el CUIT, AFIP lo ata a un domicilio. Pero no alcanza solo: las dos facturas
+  de Nini son del mismo local y tienen los puntos de venta 1117 y 0101 (uno por caja). Por eso un
+  lugar junta todas sus claves —la dirección y cada punto de venta que apareció— y, si dos
+  terminan siendo el mismo, desde su ficha se le pone la dirección y se juntan. La **ciudad** va
+  aparte de la dirección para filtrar por ella; no entra en la clave, porque a veces se lee y a
+  veces no.
 - **El precio guarda todo** (lo pediste así): el de lista por unidad, la cantidad, el
   descuento y lo que pagaste. Para comparar se usa **lo que pagaste por unidad** y, en lo que
   tiene medida, **por kg o por litro** ("$4.200 el kg"), así un paquete de 500 g se compara con
