@@ -26,7 +26,7 @@ Toda la UI y los textos van en castellano rioplatense.
   poner". `POST /api/tickets` guarda (`guardarStmts` en `lib/catalogo.mjs`, un batch).
 - **Comparar**: Productos (buscador + lista con "Más barato en X" sólo si hay más de un lugar), la
   ficha de un producto ("¿Dónde está más barato?": el último precio de cada lugar, del más barato al
-  más caro; los de más de `FRESCO_DIAS` (30) días, grises), Lugares y la ficha de un ticket. Se
+  más caro; los de más de `FRESCO_DIAS` (30) días, grises), Lugares, Mapa y la ficha de un ticket. Se
   compara por **kg, litro o unidad de la medida** (`precio_medida`) cuando se sabe; si no, por unidad.
 - **Los lugares** (`lib/catalogo.mjs` `buscarLugar`/`completarLugarStmts`): Claude copia la ciudad y
   el punto de venta (la parte de adelante del número de factura); un ticket se reconoce por la
@@ -44,9 +44,17 @@ Toda la UI y los textos van en castellano rioplatense.
   si no está, en todo el país quedándose con las de esa ciudad. Se busca una vez por dirección
   (`geo_at`; lat null = no se encontró), vuelve a buscarse si cambian la dirección o la ciudad, y
   si Georef no contesta queda para el próximo `/api/boot` (`ubicarLugares`, en segundo plano con
-  `ctx.waitUntil`; al guardar un ticket también, y al corregir el lugar antes de contestar). La
-  ficha del lugar lleva "Ver en el mapa" (OpenStreetMap). Tests en `test/geo.test.mjs` (los tests
-  nunca salen a Georef: `setGeoFetch`).
+  `ctx.waitUntil`; al guardar un ticket también, y al corregir el lugar antes de contestar). Tests
+  en `test/geo.test.mjs` (los tests nunca salen a Georef: `setGeoFetch`).
+- **La pantalla Mapa** (`mapaHtml`, cuarta de la barra): los lugares con punto en un mapa de
+  **OpenStreetMap con Leaflet** 1.9.4 (de cdnjs, con integrity, cargado recién al abrirla:
+  `cargarLeaflet`; en oscuro los mosaicos van invertidos con un filtro). Cada punto
+  (`mapPinHtml`) es la inicial del lugar o, buscando un producto, su precio; el más barato
+  (`mapaMejor`, entre TODOS sus lugares, como en Productos) tonal con aro. Tocar un punto abre la
+  ficha del lugar. Debajo, la misma lista (`mapaRowHtml`) y, con un producto, "No están en el
+  mapa" con sus lugares sin punto. **Cerca mío** pide el GPS (`ubicarme`; si el permiso ya está
+  dado, centra solo) y ordena por distancia. "Ver en el mapa" de la ficha de un lugar abre esta
+  pantalla centrada en él (`verEnMapa`).
 - **Mandar a Gastienzos**: en la ficha de un ticket propio (`gzBotonHtml`) y como acción del toast al
   guardarlo, un link a `https://gastienzos.com.ar/app?add=1&monto=&titulo=&fecha=` (`gastienzosUrl`:
   lo pagado, la cadena, la fecha) que abre el alta de Gastienzos completada (allá lo lee

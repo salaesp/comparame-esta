@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.4.0",
+    "fecha": "2026-10-26",
+    "notas": [
+      "Nueva pantalla Mapa: tus lugares en el mapa. Buscá un producto y cada lugar muestra su precio, con el más barato resaltado.",
+      "«Cerca mío» usa la ubicación del teléfono para mostrarte lo que tenés cerca y a qué distancia.",
+      "Si el más barato es un lugar sin dirección, igual aparece en la lista, debajo del mapa.",
+      "«Ver en el mapa», en la ficha de un lugar, ahora te lleva a la pantalla Mapa."
+    ]
+  },
+  {
     "version": "0.3.1",
     "fecha": "2026-10-26",
     "notas": [

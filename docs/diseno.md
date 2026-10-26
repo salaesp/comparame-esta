@@ -90,8 +90,12 @@ precios          id, ticket_id, user_id, lugar_id, fecha, producto_id (null = si
 - **El punto en el mapa** sale de la dirección con **Georef** (la API de direcciones del
   gobierno, gratis y sin key). Probado: "Av. Cabildo 2200" con "CABA" da un solo punto; "San
   Martín 500" sin ciudad da 554; en Villa Allende no tiene la calle. Por eso sólo se guarda
-  cuando el resultado es uno solo: mejor sin punto que con uno mal. Es la base para buscar en
-  el mapa.
+  cuando el resultado es uno solo: mejor sin punto que con uno mal.
+- **Buscar en el mapa** (lo pediste así: pantalla nueva, Georef, GPS, Leaflet con
+  OpenStreetMap): una pantalla Mapa con los lugares; buscando un producto, cada punto dice su
+  precio y el más barato va resaltado. Debajo, la lista (con la distancia si diste permiso de
+  ubicación) y, aparte, los lugares de ese producto que no están en el mapa: el más barato puede
+  ser uno sin dirección.
 - **El precio guarda todo** (lo pediste así): el de lista por unidad, la cantidad, el
   descuento y lo que pagaste. Para comparar se usa **lo que pagaste por unidad** y, en lo que
   tiene medida, **por kg o por litro** ("$4.200 el kg"), así un paquete de 500 g se compara con
