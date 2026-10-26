@@ -1,0 +1,26 @@
+{
+  "name": "comparame-esta",
+  "version": "0.0.0",
+  "description": "Comparar precios entre lugares a partir de las fotos de los tickets, compartiendo los precios con amigos",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test --test-concurrency=1",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "bump": "node scripts/bump-ui-version.mjs",
+    "hooks": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "medir": "node scripts/medir-modelos.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.113.0"
+  }
+}

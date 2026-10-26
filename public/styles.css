@@ -1,0 +1,1416 @@
+/* ============================================================================
+   Comparame esta — capa base del sistema visual "Suave" (sacada de gastos-app).
+   Una sola familia (Figtree, números con tabular-nums; IBM Plex Mono queda
+   SOLO para strings técnicos), coral desaturado para lo negativo/destructivo,
+   tarjetas SIN borde (el contraste tarjeta/fondo hace el trabajo), labels
+   sentence case, radios grandes. Rail lateral en desktop y barra inferior en
+   mobile. Tema claro + oscuro; se sigue el sistema salvo elección manual
+   (html[data-theme="light"|"dark"]).
+   Fuentes: este archivo NO las importa; van con <link> en el <head>:
+   https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap
+   Los componentes propios de la app viven en otro archivo.
+   ========================================================================== */
+
+/* ---------------- Tokens ---------------- */
+/* Roles al estilo Material 3: superficies por nivel (bg · card · card-deep ·
+   surface-high), tinta en tres niveles — text / muted / faint; faint es
+   DECORATIVO (placeholders, rayitas, ejes): lo que informa va en muted o text —,
+   acento con su "on", coral de egreso/destructivo con su "on", y TONO derivado
+   para los colores que elige el usuario (categorías, tarjetas, marcas:
+   --tone-ink / --tone-fill, ver inkOf()/fillOf() en app.js). Todos los pares
+   texto/superficie dan ≥ 4,5:1 en los dos temas (docs/ux-analisis-diseno.md;
+   la red es test/design-tokens.test.mjs). */
+:root {
+  color-scheme: light dark;
+  /* claro */
+  --bg: #F2F0EB;
+  --card: #FFFFFF;
+  --card-deep: #EEEBE5;       /* card2: icon-squares, inputs, tracks, pills neutras */
+  --optrail-track: #EEEBE5;      /* riel de opciones (F2) y la elegida, que flota encima */
+  --optrail-on: #FFFFFF;
+  --surface-high: #FFFFFF;    /* sheets, menús, diálogos (en oscuro, un paso más claro que la tarjeta) */
+  --outline: #DDD8D0;         /* divisores (~1,4:1 contra la tarjeta: el outline-variant de M3) */
+  --text: #1C1915;
+  --muted: #635E56;
+  --faint: #6F675E;           /* 4,7–5,6:1; antes #877F76 (3,3–3,9) */
+  --accent: #C6F24E;          /* lima de relleno (CTA, heat, barras) */
+  --accent-ink: #4E6B04;      /* lima "para texto": ≥ 4,5:1 sobre todas las superficies claras (antes #587605, 4,4 sobre card-deep) */
+  --on-accent: #10151A;       /* texto sobre lima: nunca blanco */
+  --neg: #9C554B;             /* coral desaturado — egresos y destructivo (5,5:1 sobre tarjeta) */
+  --neg-ink: #9C554B;
+  --on-neg: #FFFFFF;          /* texto sobre coral pleno (en oscuro, tinta) */
+  --purple: #6A5AE0;
+  --blue: #2E86C8;
+  --yellow: #A9570F;          /* el 4º color de cuentas: naranja (el amarillo se confundía con el lima) */
+  --navy: #2546B8;            /* colores extra de cuentas/cajitas */
+  --teal: #0F7D6D;
+  --pink: #B5377B;
+  --slate: #5A6676;
+  --gray-seg: #C4BBB0;
+  --accent-soft: rgba(140, 190, 20, .12);
+  --neg-soft: rgba(156, 85, 75, .1);
+  --purple-soft: rgba(106, 90, 224, .12);
+  --blue-soft: rgba(46, 134, 200, .12);
+  --chip-bg: #EEEBE5;
+  --hole: var(--card);        /* agujero del donut / fondo de celdas */
+  --logo-bg: #FFFFFF;         /* placa del logo: blanca en claro, card-deep en oscuro */
+  --logo-url: url('/icons/logo-light.svg'); /* variante con limas oscurecidos */
+  --focus: var(--accent-ink); /* anillo de foco: ≥ 3:1 sobre cualquier superficie */
+  /* Colores del usuario: el matiz es suyo, el tono lo pone el tema (relative
+     color syntax: oklch(from <color> var(--tone-ink) c h)). */
+  --tone-ink: min(l, .52);    /* ícono/texto teñido sobre superficie */
+  --tone-fill: min(l, .5);    /* relleno pleno con --on-tone encima */
+  --on-tone: #FFFFFF;
+  --scrim: rgba(23, 29, 22, .4);
+  /* Toast (snackbar): superficie oscura en los dos temas, ancho de la pantalla menos
+     el margen, con ícono/acción/✕ opcionales (toast() en app.js). */
+  --toast-bg: #2C2926; --toast-text: #F2F0EB; --toast-muted: #BDB8B0; --toast-act: #C6F24E; --toast-err: #E3A89F;
+  --chev-url: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23635E56' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+  /* Colores fijos que no cambian con el tema (fuera de :root no hay hex sueltos). */
+  --plate: #FFFFFF;           /* placa blanca detrás de un logo de terceros (la G de Google) */
+  --toast-hover: rgba(255, 255, 255, .08); /* capa de estado sobre la superficie oscura del toast */
+  --scrim-strong: rgba(6, 9, 12, .62);     /* scrim de los diálogos centrados */
+  /* El ✓ de la manija del switch prendido (sobre --on-accent). */
+  --switch-check-url: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C6F24E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>");
+  /* Muestras del tema (Ajustes ▸ Apariencia): los dos temas pintados tal cual, en cualquier tema. */
+  --thp-light-bg: #F2F0EB; --thp-light-card: #FFFFFF; --thp-light-ink: #1C1915;
+  --thp-dark-bg: #100F0E; --thp-dark-card: #242220; --thp-dark-ink: #EAE8E6;
+
+  /* paleta de datos (gráficos, leyendas, píldoras), índice compartido entre ellos */
+  --c1: #6F9606; --c2: #D0776A; --c3: #7B6EF6; --c4: #3690D4; --c5: #C9721E; --c6: #8E968C; /* c1: lima oscurecido (3,5:1 sobre blanco; el #9CCB1B daba 1,9) */
+
+  --font: "Figtree", system-ui, sans-serif;
+  /* --mono ES Figtree (los montos ya no van en monoespaciada); --code queda
+     para strings técnicos: API keys, links de invitación, serie. */
+  --mono: "Figtree", system-ui, sans-serif;
+  --code: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Escala tipográfica (M3: label · body · title · headline · display) en rem,
+     así sigue el tamaño de letra del sistema. Piso 11px; nada de medios px. */
+  --t-label-s: .6875rem;    /* 11 */
+  --t-label: .75rem;        /* 12 */
+  --t-body-s: .8125rem;     /* 13 */
+  --t-body-m: .875rem;      /* 14 */
+  --t-body: .9375rem;       /* 15 */
+  --t-body-l: 1rem;         /* 16 */
+  --t-title-s: 1.0625rem;   /* 17 */
+  --t-title: 1.125rem;      /* 18 */
+  --t-title-l: 1.25rem;     /* 20 */
+  --t-headline-s: 1.375rem; /* 22 */
+  --t-headline: 1.5rem;     /* 24 */
+  --t-headline-l: 1.625rem; /* 26 */
+  --t-display-s: 1.75rem;   /* 28 */
+  --t-display: 2.125rem;    /* 34 */
+  --t-display-m: 2.25rem;   /* 36 */
+  --t-display-l: 2.75rem;   /* 44 */
+  --tracking-tight: -.03em; /* heroes "emphasized" */
+
+  /* Forma (escala M3): xs 8 · s 12 · m 16 · l 28 · full. */
+  --r-xs: 8px; --r-s: 12px; --r-m: 16px; --r-l: 28px;
+  --r-group: 20px; --r-group-in: 6px; /* lista agrupada (alta mobile): afuera / entre filas */
+  --r-card: var(--r-l); --r-sm: var(--r-l); --r-chip: var(--r-xs); --r-full: 999px;
+  /* Espaciado en grilla de 4. */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  --pad-card: var(--sp-5);
+  /* Elevación por tema: claro, sombras suaves dobles; oscuro, cortas y densas. */
+  --e1: 0 1px 2px rgba(0, 0, 0, .08), 0 2px 6px rgba(0, 0, 0, .06);
+  --e2: 0 1px 3px rgba(0, 0, 0, .12), 0 6px 16px rgba(0, 0, 0, .10);
+  --e3: 0 4px 10px rgba(0, 0, 0, .14), 0 16px 40px -8px rgba(0, 0, 0, .18);
+  /* Motion (M3 Expressive): resorte ESPACIAL con rebote para lo que se mueve o
+     cambia de forma, curva de EFECTO sin rebote para color y opacidad. */
+  --ease-effect: cubic-bezier(.2, 0, 0, 1);
+  --ease: var(--ease-effect);
+  --spring: linear(0 0.0%, 0.0516 2.5%, 0.1731 5.0%, 0.3253 7.5%, 0.4815 10.0%, 0.6252 12.5%, 0.7478 15.0%, 0.8458 17.5%, 0.9197 20.0%, 0.972 22.5%, 1.0063 25.0%, 1.0264 27.5%, 1.036 30.0%, 1.0384 32.5%, 1.0362 35.0%, 1.0314 37.5%, 1.0255 40.0%, 1.0195 42.5%, 1.0141 45.0%, 1.0094 47.5%, 1.0057 50.0%, 1.0029 52.5%, 1.001 55.0%, 0.9997 57.5%, 0.999 60.0%, 0.9986 62.5%, 0.9985 65.0%, 0.9986 67.5%, 0.9988 70.0%, 0.999 72.5%, 0.9993 75.0%, 0.9995 77.5%, 0.9996 80.0%, 0.9998 82.5%, 0.9999 85.0%, 1 87.5%, 1 90.0%, 1 92.5%, 1.0001 95.0%, 1.0001 97.5%, 1);
+  --spring-soft: linear(0 0.0%, 0.0376 2.5%, 0.126 5.0%, 0.2378 7.5%, 0.3555 10.0%, 0.4687 12.5%, 0.5713 15.0%, 0.6606 17.5%, 0.7361 20.0%, 0.7984 22.5%, 0.8485 25.0%, 0.8882 27.5%, 0.9191 30.0%, 0.9426 32.5%, 0.9603 35.0%, 0.9734 37.5%, 0.9828 40.0%, 0.9895 42.5%, 0.9941 45.0%, 0.9972 47.5%, 0.9992 50.0%, 1.0004 52.5%, 1.0011 55.0%, 1.0014 57.5%, 1.0015 60.0%, 1.0015 62.5%, 1.0013 65.0%, 1.0012 67.5%, 1.001 70.0%, 1.0008 72.5%, 1.0007 75.0%, 1.0005 77.5%, 1.0004 80.0%, 1.0003 82.5%, 1.0002 85.0%, 1.0002 87.5%, 1.0001 90.0%, 1.0001 92.5%, 1.0001 95.0%, 1 97.5%, 1);
+  --dur-s: 150ms; --dur-m: 250ms; --dur-l: 400ms;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #100F0E;
+  --card: #242220;
+  --card-deep: #302D2A;
+  --optrail-track: #161514;  /* en oscuro el riel va más oscuro y la elegida bien más clara */
+  --optrail-on: #46413C;
+  --surface-high: #2C2926;
+  --outline: #443F3B;
+  --text: #EAE8E6;
+  --muted: #A4A09B;
+  --faint: #9A958F;
+  --accent: #B7D45E;      /* lima ablandado para oscuro (el claro mantiene #C6F24E) */
+  --accent-ink: #B7D45E;
+  --on-accent: #10151A;
+  --neg: #D49A91;
+  --neg-ink: #D49A91;
+  --on-neg: #1C1915;
+  --purple: #9C90EE;
+  --blue: #6FB4E4;
+  --yellow: #F0A868;
+  --navy: #7B97F7;
+  --teal: #5CC8B6;
+  --pink: #EE8FC2;
+  --slate: #A8B4C2;
+  --gray-seg: #45403C;
+  --accent-soft: rgba(183, 212, 94, .12);
+  --neg-soft: rgba(212, 154, 145, .1);
+  --purple-soft: rgba(156, 144, 238, .14);
+  --blue-soft: rgba(111, 180, 228, .14);
+  --chip-bg: #302D2A;
+  --hole: var(--card);
+  --logo-bg: #302D2A;
+  --logo-url: url('/icons/logo.svg');
+  --focus: var(--accent);
+  --tone-ink: max(l, .74);
+  --tone-fill: max(l, .72);
+  --on-tone: #1C1915;
+  --scrim: rgba(6, 9, 12, .6);
+  --toast-bg: #3A3633; --toast-text: #EAE8E6; --toast-muted: #A4A09B; --toast-act: #B7D45E; --toast-err: #D49A91;
+  --chev-url: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A4A09B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+  --c1: #B7D45E; --c2: #E39086; --c3: #9C90EE; --c4: #6FB4E4; --c5: #F0A868; --c6: #6A7682;
+  --e1: 0 1px 2px rgba(0, 0, 0, .35);
+  --e2: 0 2px 6px rgba(0, 0, 0, .4), 0 8px 20px rgba(0, 0, 0, .35);
+  --e3: 0 6px 16px rgba(0, 0, 0, .45), 0 20px 48px -8px rgba(0, 0, 0, .5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #100F0E;
+    --card: #242220;
+    --card-deep: #302D2A;
+    --optrail-track: #161514;
+    --optrail-on: #46413C;
+    --surface-high: #2C2926;
+    --outline: #443F3B;
+    --text: #EAE8E6;
+    --muted: #A4A09B;
+    --faint: #9A958F;
+    --accent: #B7D45E;      /* lima ablandado para oscuro (el claro mantiene #C6F24E) */
+    --accent-ink: #B7D45E;
+    --on-accent: #10151A;
+    --neg: #D49A91;
+    --neg-ink: #D49A91;
+    --on-neg: #1C1915;
+    --purple: #9C90EE;
+    --blue: #6FB4E4;
+    --yellow: #F0A868;
+    --navy: #7B97F7;
+    --teal: #5CC8B6;
+    --pink: #EE8FC2;
+    --slate: #A8B4C2;
+    --gray-seg: #45403C;
+    --accent-soft: rgba(183, 212, 94, .12);
+    --neg-soft: rgba(212, 154, 145, .1);
+    --purple-soft: rgba(156, 144, 238, .14);
+    --blue-soft: rgba(111, 180, 228, .14);
+    --chip-bg: #302D2A;
+    --hole: var(--card);
+    --logo-bg: #302D2A;
+    --logo-url: url('/icons/logo.svg');
+    --focus: var(--accent);
+    --tone-ink: max(l, .74);
+    --tone-fill: max(l, .72);
+    --on-tone: #1C1915;
+    --scrim: rgba(6, 9, 12, .6);
+    --toast-bg: #3A3633; --toast-text: #EAE8E6; --toast-muted: #A4A09B; --toast-act: #B7D45E; --toast-err: #D49A91;
+  --chev-url: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A4A09B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+    --c1: #B7D45E; --c2: #E39086; --c3: #9C90EE; --c4: #6FB4E4; --c5: #F0A868; --c6: #6A7682;
+    --e1: 0 1px 2px rgba(0, 0, 0, .35);
+    --e2: 0 2px 6px rgba(0, 0, 0, .4), 0 8px 20px rgba(0, 0, 0, .35);
+    --e3: 0 6px 16px rgba(0, 0, 0, .45), 0 20px 48px -8px rgba(0, 0, 0, .5);
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { font-size: 100%; } /* la escala en rem sigue el tamaño de letra del sistema */
+body {
+  margin: 0; font-family: var(--font); font-size: var(--t-body-l); line-height: 1.45;
+  font-variant-numeric: tabular-nums; /* todos los números alineados */
+  background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+  overflow-x: clip; /* nada debe generar scroll horizontal (correría la barra inferior) */
+}
+button, select, input { font: inherit; color: inherit; }
+button, summary { -webkit-user-select: none; user-select: none; }
+select:focus-visible, button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* Foco devuelto al cerrar una capa abierta con el dedo/mouse: sin anillo (focusQuiet). */
+[data-pfocus]:focus-visible { outline: none; }
+a { color: var(--accent-ink); }
+::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+
+/* Íconos de línea: stroke 1.8 en toda la app (pisa los width de los SVG inline;
+   los que necesitan otro valor lo fijan con style="", ej. el sparkline). */
+svg[stroke] { stroke-width: 1.8; }
+
+/* montos/fechas: misma Figtree del resto (tabular-nums ya viene del body).
+   La clase queda por compatibilidad con el markup existente. */
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+/* strings técnicos (API keys, links, serie): la única monoespaciada que queda */
+.code { font-family: var(--code); }
+
+/* label de sección: sentence case, sin uppercase ni tracking */
+.lbl { font-size: var(--t-body-m); font-weight: 500; color: var(--muted); }
+
+/* tarjeta base del sistema: sin borde (el contraste tarjeta/fondo separa) */
+.tcard { background: var(--card); border: none; border-radius: var(--r-card); padding: var(--pad-card); min-width: 0; }
+
+/* ---------------- Shell: rail + stage ---------------- */
+.shell { display: flex; min-height: 100vh; }
+.shell[hidden] { display: none; }
+/* Sidebar completa en desktop: ícono + nombre de cada vista. */
+/* Layout tipo Gmail (desktop): el shell entero es la superficie del marco
+   (sidebar incluida) y el contenido central es un contenedor redondeado que
+   flota con márgenes arriba/abajo/derecha (ver @media min-960 abajo). */
+.rail { width: 220px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 18px 14px;
+  position: sticky; top: 0; height: 100vh; transition: width var(--dur-m) var(--spring-soft); }
+.rail__top { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.rail__toggle { width: 40px; height: 40px; border: none; border-radius: 50%; cursor: pointer; padding: 0; margin-left: auto;
+  display: grid; place-items: center; background: transparent; color: var(--muted); }
+.rail__toggle:hover { background: var(--card-deep); color: var(--text); }
+.rail__toggle svg { width: 20px; height: 20px; }
+/* FAB del rail (M3: el "+" vive en el rail, no en la topbar). Extendido con
+   etiqueta en el rail abierto; cuadrado de 56 con radio 16 en el colapsado. */
+.rail__fab { display: inline-flex; align-items: center; justify-content: center; gap: 10px; align-self: flex-start;
+  min-width: 56px; height: 56px; padding: 0 20px 0 16px; margin: 0 0 12px 4px; border: none; cursor: pointer;
+  border-radius: var(--r-m); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; font-size: var(--t-body);
+  box-shadow: var(--e2); transition: border-radius var(--dur-m) var(--spring), transform var(--dur-m) var(--spring); }
+.rail__fab svg { width: 24px; height: 24px; }
+.rail__fab:active { border-radius: var(--r-xs); transform: scale(.97); }
+.rail--collapsed { width: 96px; }
+.rail--collapsed .rail__lbl { font-size: var(--t-label-s); }
+.rail--collapsed .rail__fab { padding: 0; width: 56px; }
+.rail--collapsed .rail__fablbl { display: none; }
+.rail--collapsed .rail__toggle { margin-left: 0; }
+.rail--collapsed .rail__top { flex-direction: column; align-items: flex-start; }
+.rail--collapsed .rail__btn { flex-direction: column; gap: 4px; height: 56px; padding: 0; justify-content: center; }
+/* Rail colapsado: indicador activo como píldora detrás del ícono (56×32). */
+.rail--collapsed .rail__btn { position: relative; background: transparent; }
+.rail--collapsed .rail__btn::before { content: ''; position: absolute; top: 4px; left: 50%; width: 56px; height: 32px; border-radius: var(--r-full);
+  background: var(--accent-soft); transform: translateX(-50%) scaleX(.35); opacity: 0;
+  transition: transform var(--dur-m) var(--spring), opacity var(--dur-s) var(--ease-effect); }
+.rail--collapsed .rail__btn.active::before { transform: translateX(-50%) scaleX(1); opacity: 1; }
+.rail--collapsed .rail__btn.active { background: transparent; }
+.rail--collapsed .rail__btn svg { position: relative; z-index: 1; }
+.rail__logo { width: 38px; height: 38px; border-radius: var(--r-s); margin: 0 0 0 4px;
+  background: var(--logo-bg) var(--logo-url) center / 64% no-repeat; }
+.rail__nav { display: flex; flex-direction: column; gap: 4px; }
+.rail__btn { width: 100%; height: 48px; border-radius: var(--r-full); border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 12px; padding: 0 16px; text-align: left;
+  background: transparent; color: var(--muted);
+  transition: background var(--dur-s) var(--ease-effect), color var(--dur-s) var(--ease-effect); }
+.rail__btn svg { width: 24px; height: 24px; stroke-width: 1.8; flex-shrink: 0; }
+.rail__lbl { font-size: var(--t-body); font-weight: 600; font-family: inherit; }
+.rail__btn:hover { background: var(--card-deep); color: var(--text); }
+.rail__btn.active { background: var(--accent-soft); color: var(--accent-ink); }
+.rail__avatar { margin-top: auto; margin-left: 4px; }
+
+.stage { flex: 1; min-width: 0; padding: 28px 36px 40px; max-width: 1160px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 0; }
+.stage[hidden] { display: none; }
+
+/* ---------------- Topbar (desktop) ---------------- */
+/* En desktop el título de la vista va arriba del stage; en mobile manda .mhead. */
+.topbar { position: sticky; top: 0; z-index: 40; background: var(--bg);
+  display: flex; flex-direction: column; gap: 8px; padding: 0 0 16px; margin: 0 0 4px; }
+.topbar[hidden] { display: none; }
+.topbar__row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 2px; }
+.topbar__logo { display: none; width: 36px; height: 36px; border-radius: var(--r-s); flex-shrink: 0;
+  background: var(--logo-bg) var(--logo-url) center / 64% no-repeat; }
+.topbar__title { margin: 0; font-size: var(--t-headline-s); font-weight: 700; letter-spacing: -.01em; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar__tools { display: flex; gap: 10px; align-items: center; min-width: 0; }
+
+.avatar-btn { position: relative; flex-shrink: 0; width: 40px; height: 40px; padding: 0;
+  border: none; cursor: pointer; border-radius: 50%;
+  background: var(--card-deep); color: var(--text); display: grid; place-items: center; }
+.avatar-btn:active { transform: scale(.94); }
+.avatar-btn__fallback { font-weight: 700; font-size: var(--t-body); line-height: 1; }
+.avatar-btn__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* Versión nueva esperando: una flechita lima en la
+   esquina del avatar. El aro es del color de lo que hay atrás (--ava-ring). */
+.avatar-btn__upd { position: absolute; right: -3px; bottom: -3px; z-index: 1; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent); display: grid; place-items: center;
+  box-shadow: 0 0 0 2.5px var(--ava-ring, var(--bg)); pointer-events: none; }
+.avatar-btn__upd svg { width: 12px; height: 12px; stroke-width: 3; }
+/* Al aparecer (M3 Expressive): el badge crece desde el centro con un resorte que se
+   pasa y vuelve, la flecha sube a su lugar (dice "actualizar") y un halo lima se
+   expande y se apaga dos veces. Una sola vez: es un aviso, no una alarma. */
+.avatar-btn__upd--in { animation: updbadge-pop 550ms var(--ease-effect) both; }
+.avatar-btn__upd--in svg { animation: updbadge-arrow 450ms var(--spring) 180ms both; }
+.avatar-btn__upd--in::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 50%;
+  background: var(--accent); pointer-events: none; opacity: 0;
+  animation: updbadge-halo 1.1s var(--ease-effect) 300ms 2; }
+@keyframes updbadge-pop {
+  0% { transform: scale(0); }
+  55% { transform: scale(1.22); }
+  78% { transform: scale(.94); }
+  100% { transform: scale(1); }
+}
+@keyframes updbadge-arrow { from { opacity: 0; translate: 0 5px; } to { opacity: 1; translate: 0 0; } }
+@keyframes updbadge-halo {
+  0% { transform: scale(1); opacity: .5; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* ------- Chrome mobile: header por vista + tab bar + FAB ------- */
+/* Sólo existen en <960px (ver @media al final); acá viven los estilos que no
+   dependen del breakpoint. El header trae título + acciones + avatar → Ajustes. */
+.mhead, .tabbar, .fab, .tabguard { display: none; } /* chrome mobile: se muestran en <960px */
+.rail__btn[hidden], .tabbar__tab[hidden] { display: none; }
+
+/* ---------------- Loading ---------------- */
+.loadbar { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 100;
+  overflow: hidden; pointer-events: none; }
+.loadbar[hidden] { display: none; }
+.loadbar::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 35%;
+  border-radius: var(--r-full); background: var(--accent); animation: loadbar 1.05s var(--ease-effect) infinite; }
+@keyframes loadbar {
+  0%   { left: -35%; width: 35%; }
+  50%  { width: 45%; }
+  100% { left: 100%; width: 35%; }
+}
+.loading { display: block; }
+.loading[hidden] { display: none; }
+/* El texto es para el lector de pantalla: lo que se ve son las siluetas. */
+.loading__txt { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Siluetas de la primera carga (skeletonHtml): tarjetas con la forma de la
+   vista y bloques que laten, sin texto. */
+.skel { display: grid; gap: 16px; }
+.skel__card { background: var(--card); border-radius: var(--r-card); padding: var(--pad-card); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.skel__card--wide { grid-column: 1 / -1; }
+.skel i { display: block; height: 12px; border-radius: var(--r-full); background: var(--card-deep);
+  animation: skelpulse 1.4s var(--ease-effect) infinite alternate; }
+.skel .skel__lbl { width: 30%; height: 10px; }
+.skel .skel__big { width: 70%; height: 40px; border-radius: var(--r-s); }
+.skel .skel__mid { width: 60%; height: 24px; border-radius: var(--r-xs); }
+.skel .skel__spark { height: 72px; margin-top: auto; border-radius: var(--r-m); }
+.skel__row { display: flex; align-items: center; gap: 14px; padding: 6px 0; }
+.skel .skel__ic { width: 40px; height: 40px; flex: none; border-radius: var(--r-s); }
+.skel__lines { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.skel .skel__sub { height: 9px; }
+.skel .skel__amt { width: 64px; flex: none; }
+@keyframes skelpulse { from { opacity: 1; } to { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .skel i { animation: none; } }
+@media (max-width: 959px) {
+  .skel { gap: var(--sp-3); }
+  .skel .skel__spark { height: 60px; }
+}
+/* Indicador de carga Expressive: una forma llena que muta (galleta → trébol →
+   círculo) mientras gira, en vez del anillo con borde. */
+.spinner { width: 40px; height: 40px; background: var(--accent); clip-path: polygon(100.0% 50.0%, 98.9% 54.3%, 96.0% 58.1%, 92.2% 61.3%, 88.7% 64.1%, 86.3% 66.9%, 85.2% 70.3%, 85.1% 74.6%, 85.1% 79.5%, 84.3% 84.3%, 82.1% 88.2%, 78.4% 90.6%, 73.8% 91.1%, 68.8% 90.4%, 64.3% 89.3%, 60.4% 88.8%, 57.0% 89.7%, 53.7% 92.0%, 50.0% 95.0%, 45.8% 97.7%, 41.4% 98.9%, 37.1% 98.1%, 33.5% 95.3%, 30.8% 91.2%, 28.8% 86.8%, 26.8% 83.1%, 24.2% 80.7%, 20.7% 79.3%, 16.2% 78.4%, 11.4% 77.0%, 7.3% 74.7%, 4.7% 71.1%, 4.1% 66.7%, 5.3% 62.0%, 7.4% 57.5%, 9.3% 53.6%, 10.0% 50.0%, 9.3% 46.4%, 7.4% 42.5%, 5.3% 38.0%, 4.1% 33.3%, 4.7% 28.9%, 7.3% 25.3%, 11.4% 23.0%, 16.2% 21.6%, 20.7% 20.7%, 24.2% 19.3%, 26.8% 16.9%, 28.7% 13.2%, 30.8% 8.8%, 33.5% 4.7%, 37.1% 1.9%, 41.4% 1.1%, 45.8% 2.3%, 50.0% 5.0%, 53.7% 8.0%, 57.0% 10.3%, 60.4% 11.2%, 64.3% 10.7%, 68.8% 9.6%, 73.8% 8.9%, 78.4% 9.4%, 82.1% 11.8%, 84.3% 15.7%, 85.1% 20.5%, 85.1% 25.4%, 85.2% 29.7%, 86.3% 33.1%, 88.7% 35.9%, 92.2% 38.7%, 96.0% 41.9%, 98.9% 45.7%);
+  animation: m3spin 2.6s var(--ease-effect) infinite; }
+@keyframes m3spin {
+  0% { clip-path: polygon(100.0% 50.0%, 98.9% 54.3%, 96.0% 58.1%, 92.2% 61.3%, 88.7% 64.1%, 86.3% 66.9%, 85.2% 70.3%, 85.1% 74.6%, 85.1% 79.5%, 84.3% 84.3%, 82.1% 88.2%, 78.4% 90.6%, 73.8% 91.1%, 68.8% 90.4%, 64.3% 89.3%, 60.4% 88.8%, 57.0% 89.7%, 53.7% 92.0%, 50.0% 95.0%, 45.8% 97.7%, 41.4% 98.9%, 37.1% 98.1%, 33.5% 95.3%, 30.8% 91.2%, 28.8% 86.8%, 26.8% 83.1%, 24.2% 80.7%, 20.7% 79.3%, 16.2% 78.4%, 11.4% 77.0%, 7.3% 74.7%, 4.7% 71.1%, 4.1% 66.7%, 5.3% 62.0%, 7.4% 57.5%, 9.3% 53.6%, 10.0% 50.0%, 9.3% 46.4%, 7.4% 42.5%, 5.3% 38.0%, 4.1% 33.3%, 4.7% 28.9%, 7.3% 25.3%, 11.4% 23.0%, 16.2% 21.6%, 20.7% 20.7%, 24.2% 19.3%, 26.8% 16.9%, 28.7% 13.2%, 30.8% 8.8%, 33.5% 4.7%, 37.1% 1.9%, 41.4% 1.1%, 45.8% 2.3%, 50.0% 5.0%, 53.7% 8.0%, 57.0% 10.3%, 60.4% 11.2%, 64.3% 10.7%, 68.8% 9.6%, 73.8% 8.9%, 78.4% 9.4%, 82.1% 11.8%, 84.3% 15.7%, 85.1% 20.5%, 85.1% 25.4%, 85.2% 29.7%, 86.3% 33.1%, 88.7% 35.9%, 92.2% 38.7%, 96.0% 41.9%, 98.9% 45.7%); transform: rotate(0deg); }
+  33% { clip-path: polygon(100.0% 50.0%, 99.3% 54.3%, 97.2% 58.3%, 93.9% 61.8%, 90.0% 64.6%, 85.7% 66.7%, 81.6% 68.3%, 77.9% 69.6%, 74.9% 70.9%, 72.6% 72.6%, 70.9% 74.9%, 69.6% 77.9%, 68.3% 81.6%, 66.7% 85.7%, 64.6% 90.0%, 61.8% 93.9%, 58.3% 97.2%, 54.3% 99.3%, 50.0% 100.0%, 45.7% 99.3%, 41.7% 97.2%, 38.2% 93.9%, 35.4% 90.0%, 33.3% 85.7%, 31.8% 81.6%, 30.4% 77.9%, 29.1% 74.9%, 27.4% 72.6%, 25.1% 70.9%, 22.1% 69.6%, 18.4% 68.3%, 14.3% 66.7%, 10.0% 64.6%, 6.1% 61.8%, 2.8% 58.3%, 0.7% 54.3%, 0.0% 50.0%, 0.7% 45.7%, 2.8% 41.7%, 6.1% 38.2%, 10.0% 35.4%, 14.3% 33.3%, 18.4% 31.8%, 22.1% 30.4%, 25.1% 29.1%, 27.4% 27.4%, 29.1% 25.1%, 30.4% 22.1%, 31.7% 18.4%, 33.3% 14.3%, 35.4% 10.0%, 38.2% 6.1%, 41.7% 2.8%, 45.7% 0.7%, 50.0% 0.0%, 54.3% 0.7%, 58.3% 2.8%, 61.8% 6.1%, 64.6% 10.0%, 66.7% 14.3%, 68.3% 18.4%, 69.6% 22.1%, 70.9% 25.1%, 72.6% 27.4%, 74.9% 29.1%, 77.9% 30.4%, 81.6% 31.7%, 85.7% 33.3%, 90.0% 35.4%, 93.9% 38.2%, 97.2% 41.7%, 99.3% 45.7%); }
+  66% { clip-path: polygon(100.0% 50.0%, 99.1% 54.3%, 97.0% 58.3%, 95.4% 62.2%, 94.9% 66.3%, 94.6% 70.8%, 93.3% 75.0%, 90.3% 78.2%, 86.6% 80.7%, 83.2% 83.2%, 80.7% 86.6%, 78.2% 90.3%, 75.0% 93.3%, 70.8% 94.6%, 66.3% 94.9%, 62.2% 95.4%, 58.3% 97.0%, 54.3% 99.1%, 50.0% 100.0%, 45.7% 99.1%, 41.7% 97.0%, 37.8% 95.4%, 33.7% 94.9%, 29.2% 94.6%, 25.0% 93.3%, 21.8% 90.3%, 19.3% 86.6%, 16.8% 83.2%, 13.4% 80.7%, 9.7% 78.2%, 6.7% 75.0%, 5.4% 70.8%, 5.1% 66.3%, 4.6% 62.2%, 3.0% 58.3%, 0.9% 54.3%, 0.0% 50.0%, 0.9% 45.7%, 3.0% 41.7%, 4.6% 37.8%, 5.1% 33.7%, 5.4% 29.2%, 6.7% 25.0%, 9.7% 21.8%, 13.4% 19.3%, 16.8% 16.8%, 19.3% 13.4%, 21.8% 9.7%, 25.0% 6.7%, 29.2% 5.4%, 33.7% 5.1%, 37.8% 4.6%, 41.7% 3.0%, 45.7% 0.9%, 50.0% 0.0%, 54.3% 0.9%, 58.3% 3.0%, 62.2% 4.6%, 66.3% 5.1%, 70.8% 5.4%, 75.0% 6.7%, 78.2% 9.7%, 80.7% 13.4%, 83.2% 16.8%, 86.6% 19.3%, 90.3% 21.8%, 93.3% 25.0%, 94.6% 29.2%, 94.9% 33.7%, 95.4% 37.8%, 97.0% 41.7%, 99.1% 45.7%); }
+  100% { clip-path: polygon(100.0% 50.0%, 98.9% 54.3%, 96.0% 58.1%, 92.2% 61.3%, 88.7% 64.1%, 86.3% 66.9%, 85.2% 70.3%, 85.1% 74.6%, 85.1% 79.5%, 84.3% 84.3%, 82.1% 88.2%, 78.4% 90.6%, 73.8% 91.1%, 68.8% 90.4%, 64.3% 89.3%, 60.4% 88.8%, 57.0% 89.7%, 53.7% 92.0%, 50.0% 95.0%, 45.8% 97.7%, 41.4% 98.9%, 37.1% 98.1%, 33.5% 95.3%, 30.8% 91.2%, 28.8% 86.8%, 26.8% 83.1%, 24.2% 80.7%, 20.7% 79.3%, 16.2% 78.4%, 11.4% 77.0%, 7.3% 74.7%, 4.7% 71.1%, 4.1% 66.7%, 5.3% 62.0%, 7.4% 57.5%, 9.3% 53.6%, 10.0% 50.0%, 9.3% 46.4%, 7.4% 42.5%, 5.3% 38.0%, 4.1% 33.3%, 4.7% 28.9%, 7.3% 25.3%, 11.4% 23.0%, 16.2% 21.6%, 20.7% 20.7%, 24.2% 19.3%, 26.8% 16.9%, 28.7% 13.2%, 30.8% 8.8%, 33.5% 4.7%, 37.1% 1.9%, 41.4% 1.1%, 45.8% 2.3%, 50.0% 5.0%, 53.7% 8.0%, 57.0% 10.3%, 60.4% 11.2%, 64.3% 10.7%, 68.8% 9.6%, 73.8% 8.9%, 78.4% 9.4%, 82.1% 11.8%, 84.3% 15.7%, 85.1% 20.5%, 85.1% 25.4%, 85.2% 29.7%, 86.3% 33.1%, 88.7% 35.9%, 92.2% 38.7%, 96.0% 41.9%, 98.9% 45.7%); transform: rotate(360deg); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Capa abierta (modal, detalle, sheets, pickers, diálogos): el fondo no scrollea.
+   Lo prende/apaga syncInert (la pila de trampas de foco), no cada overlay. Va en
+   <html>: en mobile html tiene overflow-x: clip y el overflow del body deja de
+   propagarse al viewport. iOS igual ignora esto para el dedo: el filtro táctil
+   de app.js (touchScrollOk) es el que lo frena ahí. */
+html.pop-open { overflow: hidden; }
+
+@keyframes popfade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ---------------- Chips ---------------- */
+.chip { font-size: var(--t-label); font-weight: 500; white-space: nowrap;
+  color: var(--muted); background: var(--chip-bg); border-radius: var(--r-chip); padding: 3px 10px; line-height: 1.4;
+  display: inline-flex; align-items: center; gap: 4px; }
+.chip svg { width: 12px; height: 12px; }
+/* ⓘ dentro de una fila (sin texto): sólo el glifo circulado, sin fondo — el
+   propio SVG ya es el círculo. */
+.chip--info { padding: 0; background: transparent; color: var(--faint); }
+.chip--info svg { width: 15px; height: 15px; }
+.chip--purple { color: var(--purple); background: var(--purple-soft); }
+.chip--accent { color: var(--on-accent); background: var(--accent); }
+.chip--blue { color: var(--blue); background: var(--blue-soft); }
+/* píldora de tendencia ("+11%", sin flecha) */
+.trendpill { font-size: var(--t-label); font-weight: 500; border-radius: var(--r-chip); padding: 3px 9px; white-space: nowrap; }
+.trendpill--pos { color: var(--accent-ink); background: var(--accent-soft); }
+.trendpill--neg { color: var(--neg-ink); background: var(--neg-soft); }
+.trendpill--flat { color: var(--faint); background: var(--chip-bg); }
+
+/* dot redondo de leyendas */
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+/* montos con signo */
+.amt-in { color: var(--accent-ink); }
+.amt-out { color: var(--neg-ink); }
+
+/* chips de una fila (atributos), en .row__meta */
+.movchips { display: flex; gap: 4px; justify-content: flex-end; }
+
+/* ---------------- Fila de lista (.mrow) ---------------- */
+/* Fila de 2 líneas (título + sublínea con metadata "·"), sin divisores entre
+   filas (el padding separa). Va dentro de una tarjeta (.tcard / .gcard): el
+   margen negativo deja el fondo del hover concéntrico con la tarjeta. */
+.mrow { display: flex; align-items: center; gap: 14px; padding: 12px; margin: 0 -12px; border: none;
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; /* mantener apretado = menú de acciones, no selección */
+  font-size: var(--t-body); cursor: pointer; width: calc(100% + 24px); text-align: left; background: none; color: inherit;
+  border-radius: var(--r-group); transition: background var(--dur-s) var(--ease-effect); }
+/* El fondo al tocar/pasar queda concéntrico con la tarjeta: a ~8px de su borde y
+   con su radio menos ese margen (28 − 8 = --r-group), no un rectángulo de radio
+   chico pegado al borde. */
+.mrow:hover { background: var(--card-deep); }
+.mrow__ic { width: 40px; height: 40px; border-radius: var(--r-s); background: var(--card-deep); color: var(--muted);
+  display: grid; place-items: center; flex-shrink: 0; }
+.mrow__ic svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.8; }
+.mrow__ic--in { background: var(--accent-soft); color: var(--accent-ink); }
+.mrow__text { flex: 1; min-width: 0; }
+.mrow__title { display: block; font-size: var(--t-body-l); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mrow__sub { color: var(--faint); font-size: var(--t-body-m); }
+.mrow__subline { display: block; color: var(--muted); font-size: var(--t-body-s); margin-top: 1px; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mrow__right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.mrow__amt { font-size: var(--t-body); font-weight: 500; flex-shrink: 0; text-align: right; white-space: nowrap; }
+/* TRANSACTION ROW (.txrow): la fila de un ítem en todas las listas, sobre la base
+   .mrow, todas del MISMO alto: título arriba y, abajo, sólo los chips en
+   .row__meta (o una sublínea .mrow__subline). A la derecha sólo plata: el monto
+   en la línea del título y, si hace falta, un total o referencia ("de $38.900",
+   .row__of) en la de abajo. Las dos columnas comparten alturas de línea (1,5rem
+   cada una), así quedan a la par aunque los chips sean más altos que el texto.
+   Sin chips ni total (.row--solo) la fila mide lo mismo, con el título y el
+   monto al medio. */
+.mrow.txrow { align-items: center; }
+.txrow .mrow__title, .txrow .mrow__amt { line-height: 1.5rem; }
+.txrow .mrow__right { gap: 0; align-self: flex-start; }
+.txrow .mrow__text { min-height: 3rem; display: flex; flex-direction: column; justify-content: center; }
+.txrow.row--solo .mrow__right { align-self: center; }
+.row__meta { display: flex; align-items: center; gap: 6px; min-width: 0; height: 1.5rem; }
+.row__meta > .mrow__subline { flex: 0 1 auto; min-width: 0; margin-top: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row__meta:empty { display: none; }
+.row__meta .movchips { flex: none; justify-content: flex-start; }
+.row__meta .chip { padding-block: 1px; }
+.row__of { display: block; line-height: 1.5rem; font-size: var(--t-body-s); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* filas apiladas dentro de un contenedor */
+.gcard { display: flex; flex-direction: column; }
+
+/* ---------------- Estado vacío / notas ---------------- */
+.empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; text-align: center; color: var(--muted); }
+.empty__ic { width: 56px; height: 56px; clip-path: url(#shape-cookie); background: var(--accent); color: var(--on-accent);
+  display: grid; place-items: center; font-weight: 700; font-size: var(--t-title-l); }
+.empty__ic--warn { background: var(--neg); color: var(--on-neg); }
+.empty p { margin: 0; max-width: 34ch; line-height: 1.45; }
+.empty__title { color: var(--text); font-size: var(--t-title); font-weight: 700; margin: 0; }
+.empty__acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.empty__btn { border: none; border-radius: var(--r-full); padding: var(--sp-3) var(--sp-5); font: inherit; font-weight: 600; font-size: var(--t-body);
+  cursor: pointer; background: var(--accent); color: var(--on-accent); }
+.empty__btn--ghost { background: var(--card-deep); color: var(--text); }
+
+/* Barra "sin conexión" (snapshot offline / red caída). En flujo normal, arriba
+   del shell: empuja el contenido en vez de taparlo. */
+.offbar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 16px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+  background: var(--neg); color: var(--on-neg); font-size: var(--t-body-m); font-weight: 500; line-height: 1.3; text-align: center; }
+.offbar[hidden] { display: none; }
+.offbar__btn { flex: none; border: 1px solid color-mix(in srgb, var(--on-neg) 60%, transparent); background: transparent; color: var(--on-neg);
+  border-radius: var(--r-full); padding: 4px 12px; font: inherit; font-size: var(--t-body-s); font-weight: 600; cursor: pointer; }
+.note { font-size: var(--t-body-m); color: var(--muted); text-align: center; margin: 4px 0; }
+/* Error de validación: se tiene que VER (coral, no gris). */
+.note--err { color: var(--neg); font-weight: 600; }
+
+/* ============================================================================
+   Modal (formularios, fichas) y hojas de abajo (.catpick)
+   ========================================================================== */
+.modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal[hidden] { display: none; }
+.modal__scrim { position: absolute; inset: 0; background: var(--scrim); backdrop-filter: blur(2px); }
+.modal__panel { position: relative; background: var(--surface-high); border: none; border-radius: var(--r-l);
+  width: 100%; max-width: 460px; max-height: 86vh; overflow-y: auto; padding: 0 22px 22px;
+  box-shadow: var(--e3); }
+/* Cabecera fija: el scroll del panel no se lleva el título ni la ✕ (espejo del
+   patrón sticky de .mvf__foot, con fade hacia el contenido). El panel no tiene
+   padding-top: sticky no puede subir por encima del padding del scroller, así
+   que la cabecera arranca en 0 y trae su propio aire (18px). */
+.modal__head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  position: sticky; top: 0; z-index: 4; margin: 0 -22px 4px; padding: 18px 22px 12px;
+  background: var(--surface-high); }
+/* Fade suave DEBAJO de la cabecera (fuera de su caja) para que el contenido no
+   aparezca por detrás del título al scrollear. */
+.modal__head::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 12px;
+  background: linear-gradient(var(--surface-high), transparent); pointer-events: none; }
+.modal__head h2 { margin: 0; font-size: var(--t-title); font-weight: 700; letter-spacing: -.01em; }
+.modal__x { border: none; background: var(--card-deep); width: 40px; height: 40px; border-radius: 50%;
+  cursor: pointer; font-size: var(--t-body); color: var(--muted); flex-shrink: 0; }
+.modal__x:hover { color: var(--text); }
+/* La ✕ es un dibujo y no el carácter: el glifo cae según la fuente (en Figtree
+   quedaba ~1px arriba del centro, y en iOS sale de otra fuente). El texto queda
+   en 0 para que el botón siga diciendo lo mismo sin mostrarlo. */
+.modal__x { position: relative; padding: 0; font-size: 0; }
+.modal__x::before { content: ''; position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; background: currentColor;
+  -webkit-mask: var(--x-mask) center / contain no-repeat; mask: var(--x-mask) center / contain no-repeat;
+  --x-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2 2l10 10M12 2 2 12' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E"); }
+@media (forced-colors: active) { .modal__x::before { background: ButtonText; } }
+.modal__lead { margin: 4px 0 16px; color: var(--muted); font-size: var(--t-body-m); }
+
+/* Título con sublínea que aparece al scrollear (el JS pone .modal__panel--scrolled
+   cuando el panel bajó): <div class="modal__ttl"><h2>…</h2><span class="modal__sub">…</span></div>. */
+.modal__ttl { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.modal__ttl h2 { margin: 0; }
+.modal__sub { font-size: var(--t-body-s); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-height: 0; opacity: 0; transition: max-height var(--dur-m) var(--spring-soft), opacity var(--dur-s) var(--ease-effect); }
+.modal__sub[hidden] { display: none; }
+.modal__panel--scrolled .modal__sub { max-height: 20px; opacity: 1; }
+.modal__sub b { font-weight: 600; }
+
+/* Hoja de abajo (.catpick): scrim + sheet que sube con resorte; en ≥640px se
+   centra como diálogo. Se abre agregando .catpick--in en el frame siguiente. */
+.catpick { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end;
+  justify-content: center; opacity: 0; transition: opacity var(--dur-s) var(--ease-effect); }
+.catpick--in { opacity: 1; }
+.catpick__scrim { position: absolute; inset: 0; background: var(--scrim); }
+.catpick__sheet { position: relative; width: min(560px, 100%); max-height: 78vh; overflow-y: auto;
+  background: var(--surface-high); border-radius: var(--r-l) var(--r-l) 0 0; padding: 20px;
+  box-shadow: var(--e3);
+  transform: translateY(100%); transition: transform var(--dur-l) var(--spring); }
+.catpick--in .catpick__sheet { transform: translateY(0); }
+/* Rayita de toda hoja de abajo (sheetGestures en los pickers, openModal en el
+   modal): un botón "Cerrar" que además se arrastra. Sólo en mobile; en la compu
+   no hay gesto y cierra la ✕. */
+.sheet__grab { display: none; }
+@media (max-width: 959px) {
+  .sheet__grab { display: block; position: relative; width: 40px; height: 5px; flex-shrink: 0; padding: 0; border: none;
+    border-radius: var(--r-full); background: var(--faint); opacity: .5; cursor: grab; margin: -8px auto 14px; }
+  .sheet__grab::after { content: ''; position: absolute; inset: -16px -40px; } /* 44px de toque */
+  .sheet__grab:hover, .sheet__grab:active { opacity: .8; }
+  .modal__head > .sheet__grab { position: absolute; top: 8px; left: 50%; margin: 0; transform: translateX(-50%); }
+  /* Con rayita y gesto, la ✕ sobra; queda sólo en un formulario largo (.modal__head--x:
+     con el teclado abierto no hay afuera para tocar y arrastrar se mezcla con el scroll). */
+  .catpick__head .modal__x, .modal__head:not(.modal__head--x) .modal__x { display: none; } /* .modal__head--x: la conserva */
+}
+.catpick__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+@media (min-width: 640px) { .catpick { align-items: center; }
+  .catpick__sheet { border-radius: var(--r-l); max-height: 82vh; } }
+/* Hoja con cabecera y pie fijos (.mvsheet): montada dentro de #modal (position
+   absolute) cuando abre sobre un formulario, así hereda el achique del viewport
+   con el teclado abierto. */
+#modal .catpick { position: absolute; }
+/* Cabecera sticky del sheet: título + ✕ siempre a la vista, el contenido pasa
+   por detrás con fade (espejo del pie). El padding-top del sheet se muda acá
+   para que al scrollear no quede banda descubierta arriba. */
+.mvsheet .catpick__sheet { padding-top: 0; }
+.mvsheet .sheet__grab { margin: 10px auto -10px; position: relative; z-index: 4; }
+.mvsheet .catpick__head { position: sticky; top: 0; z-index: 3; margin: 0 -20px 10px;
+  padding: 18px 20px 10px;
+  background: linear-gradient(to bottom, var(--surface-high) calc(100% - 12px), transparent); }
+.mvsheet .catpick__head .lbl { font-size: var(--t-body); font-weight: 700; color: var(--text); }
+/* Aire entre el contenido y el pie "Listo". */
+.mvsheet__body { display: flex; flex-direction: column; gap: 18px; padding-bottom: 12px; }
+.mvsheet__sec { display: flex; flex-direction: column; gap: 8px; }
+.mvsheet__sec > span { font-size: var(--t-body-s); font-weight: 500; color: var(--muted); }
+/* Sección no aplicable: grisada pero presente (estructura fija). */
+.mvsheet__sec--off { opacity: .45; pointer-events: none; }
+/* "Listo" siempre a la vista: pie sticky con gradiente y el contenido scrollea
+   por detrás (mismo patrón que .mvf__foot del modal; compensa el padding 20px
+   del .catpick__sheet con márgenes negativos). Opaco salvo la franja de arriba;
+   la sombra tapa el hueco del padding inferior del sheet (ver .mvf__foot). */
+.mvsheet__foot { position: sticky; bottom: 0; z-index: 3; margin: 4px -20px -20px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--surface-high) calc(100% - 18px), transparent);
+  box-shadow: 0 calc(24px + env(safe-area-inset-bottom, 0px)) 0 var(--surface-high); }
+.catpick__sheet .mvf__submit:disabled { opacity: .45; cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  .catpick, .catpick__sheet { transition: none; }
+}
+
+/* Pie sticky de un formulario en el modal + la píldora lima de Guardar.
+   (El prefijo .mvf__ es herencia de gastos: es el pie y el botón principal de
+   CUALQUIER formulario u hoja, no sólo del alta.) */
+/* Pie sticky: opaco detrás y debajo del botón (nada se lee ahí) y sólo la
+   franja de arriba se desvanece, para que se vea cómo el contenido se esconde
+   al scrollear. La sombra sin blur corrida hacia abajo tapa el hueco que queda
+   entre el foot pegado (bottom:0 = borde interno del scrollport) y el padding
+   inferior del panel, por donde antes se veía el contenido scrolleado. Es una
+   sombra y no un ::after absoluto a propósito: el ::after suma al área
+   scrolleable (y Chrome le agrega el padding del panel debajo), así que el form
+   scrolleaba unos px aunque todo entrara; la sombra no cuenta para el scroll. */
+.mvf__foot { position: sticky; bottom: 0; z-index: 3; margin: 4px -22px -22px;
+  padding: 12px 22px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--surface-high) calc(100% - 18px), transparent);
+  box-shadow: 0 calc(22px + env(safe-area-inset-bottom, 0px)) 0 var(--surface-high); }
+.mvf__submit { width: 100%; border: none; background: var(--accent); color: var(--on-accent); border-radius: var(--r-full);
+  padding: 14px 16px; font-weight: 700; font-size: var(--t-body); cursor: pointer; }
+.mvf__submit:hover { filter: brightness(1.06); }
+.mvf__submit:disabled { opacity: .5; cursor: default; }
+/* Estado "guardando": spinner + label, para que se vea que el request está en vuelo. */
+.mvf__submit--busy { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.mvf__submit--busy:disabled { opacity: .75; }
+.mvf__spin { width: 14px; height: 14px; flex: none; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor;
+  animation: mvf-spin .7s linear infinite; }
+@keyframes mvf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mvf__spin { animation-duration: 1.6s; } }
+.mvf__submit--ic { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--t-body-l); }
+.mvf__submit--ic svg { width: 22px; height: 22px; stroke-width: 2.2; }
+
+/* Picker de filas (openRowPicker, bkpickRowHtml): una fila por opción y un radio.
+   La elegida va tonal con aro accent-ink, nunca en lima lleno (el lima es de las acciones). */
+.bkpick { display: flex; flex-direction: column; margin-top: 4px; }
+.bkpick__row { display: flex; align-items: center; gap: 12px; padding: 12px 10px; width: 100%;
+  border: none; border-bottom: 1px solid var(--outline); background: none; cursor: pointer;
+  font-family: inherit; color: inherit; text-align: left;
+  transition: background var(--dur-s) var(--ease-effect), box-shadow var(--dur-s) var(--ease-effect); }
+.bkpick__row:last-child { border-bottom: none; }
+.bkpick__radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--faint);
+  flex-shrink: 0; display: grid; place-items: center; }
+.bkpick__row--sel { border-bottom-color: transparent; border-radius: var(--r-m);
+  background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 2px var(--accent-ink); }
+.bkpick__row--sel .bkpick__radio { border-color: var(--accent-ink); }
+.bkpick__row--sel .bkpick__radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-ink); }
+.bkpick__row--danger { color: var(--neg-ink); }
+.bkpick__sec { padding: 14px 4px 4px; font-size: var(--t-body-s); font-weight: 600; color: var(--muted); }
+/* El ícono teñido de una opción (tile de 38) y su texto. */
+.bkcard__ic { width: 38px; height: 38px; border-radius: var(--r-s); display: grid; place-items: center; flex-shrink: 0; }
+.bkcard__ic svg { width: 19px; height: 19px; }
+.bkm__whotext { min-width: 0; flex: 1; display: flex; flex-direction: column; text-align: left; }
+.bkm__whotext b { font-size: var(--t-body); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkm__whotext > span { font-size: var(--t-body-s); color: var(--faint); margin-top: 1px; }
+/* Fila de crear al pie del picker: punteada, sin radio. */
+.bkpick__row--new b { color: var(--accent-ink); font-weight: 600; }
+.bkpick__row--new .bkcard__ic { border: 1.5px dashed var(--accent-ink); color: var(--accent-ink); background: transparent; }
+
+/* Campo con su nombre arriba (relleno card-deep, aro accent-ink con el foco). */
+.accf { display: flex; flex-direction: column; gap: var(--sp-2); margin: var(--sp-2) 0 var(--sp-1); }
+.accf .setsub { margin: var(--sp-3) 0 0; }
+.accf__field { display: flex; flex-direction: column; gap: 2px; padding: 10px var(--sp-4) 8px;
+  border-radius: var(--r-group); background: var(--card-deep); cursor: text; }
+.accf__field[hidden] { display: none; }
+.accf__field > span { font-size: var(--t-label); color: var(--muted); font-weight: 500; }
+.accf__field input { border: none; background: transparent; color: var(--text); font: inherit;
+  font-size: var(--t-body-l); font-weight: 600; padding: 2px 0; min-height: 32px; width: 100%; outline: none; }
+.accf__field input::placeholder { color: var(--faint); font-weight: 500; }
+.accf__field:focus-within { box-shadow: 0 0 0 2px var(--accent-ink); }
+.accf__hint { margin: 0; font-size: var(--t-body-s); color: var(--muted); line-height: 1.4; }
+.accf__hint .helplink { font: inherit; }
+
+/* ---------------- Ayuda detrás de un ⓘ ---------------- */
+/* Una línea + ⓘ (helpLineHtml): lo que importa a la vista, la explicación detrás del ⓘ. */
+.helpline { display: flex; align-items: center; gap: 2px; margin: 4px 0 16px; color: var(--muted); font-size: var(--t-body-m); line-height: 1.45; }
+.helpline > span { min-width: 0; }
+.helpline .helpbtn { margin: -8px 0; color: var(--muted); }
+.helplink { display: inline-flex; align-items: center; gap: 5px; border: none; background: none; padding: 4px 0; font: inherit; font-weight: 600; color: var(--accent-ink); cursor: pointer; }
+.helplink svg { width: 15px; height: 15px; }
+.helpbtn { display: inline-grid; place-items: center; width: 28px; height: 28px; margin: -6px 0 -6px 2px; border: none; border-radius: 50%; background: none; color: var(--faint); cursor: pointer; vertical-align: middle; }
+.helpbtn svg { width: 16px; height: 16px; }
+.helpbtn { position: relative; }
+.helpbtn::after { content: ''; position: absolute; inset: -8px; }
+/* Atajos de teclado (showShortcuts). */
+.kbdlist div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.kbdlist dt { flex-shrink: 0; }
+.kbdlist dd { margin: 0; color: var(--muted); font-size: var(--t-body-m); text-align: right; }
+kbd { display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: var(--r-xs); background: var(--card-deep); color: var(--text); font: inherit; font-size: var(--t-body-s); font-weight: 700; text-align: center; }
+
+/* Lo irreversible de una ficha (dangerFootHtml): solo al pie, texto coral tras un divisor. */
+.dangerfoot { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--outline); }
+.dangerfoot__btn { display: block; width: 100%; min-height: 48px; border: none; border-radius: var(--r-full); background: none;
+  color: var(--neg-ink); font: inherit; font-size: var(--t-body-m); font-weight: 600; cursor: pointer;
+  transition: background var(--dur-s) var(--ease-effect); }
+.dangerfoot__btn:hover { background: color-mix(in srgb, var(--neg) 10%, transparent); }
+.dangerfoot__btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ---------------- Ajustes (pantalla completa) ----------------
+   Desktop: dos paneles — sidebar con el menú de secciones (.setmenu) + panel
+   derecho con SÓLO la tarjeta de la sección activa (.setcard--active).
+   Mobile (media query al final): menú a pantalla completa; tocar una fila abre
+   su sub-pantalla (#view-ajustes[data-sec="…"]). */
+/* padding-top con safe-area: Ajustes esconde el header sticky, así que en el
+   PWA de iPhone su encabezado propio ("Volver · Ajustes") debe despejar la
+   barra de estado por su cuenta (en desktop/Android env() vale 0). */
+.setwrap { display: grid; grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 14px; padding-top: calc(4px + env(safe-area-inset-top, 0px)); align-items: start; }
+.setpage__head { grid-column: 1 / -1; }
+.setgrid { min-width: 0; }
+.setcol { display: contents; } /* las tarjetas cuelgan directo del panel */
+.setgrid .setcard { display: none; }
+.setgrid .setcard--active { display: block; }
+.setcard { padding: var(--pad-card); }
+.setcard__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.setcard__head .lbl { display: inline-flex; align-items: center; gap: 8px; }
+.setcard__lead { margin: -4px 0 12px; color: var(--muted); font-size: var(--t-body-m); line-height: 1.5; }
+.setcard__hint { margin: 12px 0 0; color: var(--muted); font-size: var(--t-body-s); line-height: 1.5;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.setcard__hint code { font-family: var(--mono); }
+.setpage__head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+/* Menú de secciones: cuenta, bloques con título y lo irreversible al pie. En desktop es la
+   sidebar (sticky: acompaña el scroll del panel derecho); en mobile, la pantalla principal de Ajustes. */
+.setmenu { display: flex; flex-direction: column; gap: var(--sp-3);
+  position: sticky; top: 14px; }
+/* Bloques: el título en el color del acento, como los encabezados de lista de Android. */
+.setmenu__group { display: flex; flex-direction: column; gap: var(--sp-2); }
+.setmenu__title { margin-top: var(--sp-2); padding: 0 var(--sp-4); color: var(--accent-ink); font-size: var(--t-body-m); font-weight: 600; }
+.setmenu__chev { color: var(--muted); font-size: var(--t-body-l); line-height: 1; flex-shrink: 0; }
+.setlist__row, .setpill, .setdanger { border: none; font: inherit; color: var(--text); cursor: pointer; text-align: left;
+  transition: background var(--dur-s) var(--ease-effect), box-shadow var(--dur-s) var(--ease-effect); }
+/* Lista agrupada (radio grande afuera, chico entre filas). En el menú de Ajustes, todos los
+   bloques son la misma lista (.setmenu .setlist, abajo). */
+.setlist { display: flex; flex-direction: column; gap: 2px; }
+.setlist__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 56px; padding: var(--sp-2) var(--sp-4);
+  background: var(--card); border-radius: var(--r-group-in); }
+.setlist > .setlist__row:first-child { border-top-left-radius: var(--r-group); border-top-right-radius: var(--r-group); }
+.setlist > .setlist__row:last-child { border-bottom-left-radius: var(--r-group); border-bottom-right-radius: var(--r-group); }
+.setlist__lead { width: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 3px; color: var(--muted); }
+.setlist__lead:not(.setprev) > i { width: 14px; height: 14px; border-radius: 5px; }
+.setlist__lead:not(.setprev) > i.is-empty { background: none; outline: 1.5px dashed var(--outline); outline-offset: -1.5px; }
+.setlist__lead svg { width: 20px; height: 20px; }
+.setlist__avas { display: flex; }
+.setlist__ava { width: 26px; height: 26px; clip-path: url(#shape-clover); color: var(--on-tone); display: grid; place-items: center;
+  font-size: var(--t-label); font-weight: 700; }
+.setlist__ava + .setlist__ava { margin-left: -6px; }
+.setlist__ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--card-deep); font-weight: 700; }
+.setlist__t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.setlist__t b { font-size: var(--t-body); font-weight: 600; }
+.setlist__t small { font-size: var(--t-label); color: var(--muted); }
+/* El menú de Ajustes: filas de 64 de alto y, a la izquierda, un cuadro de 56×40
+   con la muestra de lo que cambia o lo que se reconoce (caras, colores, un ícono),
+   así todos los nombres arrancan en la misma línea. */
+.setmenu .setlist__row { min-height: 64px; gap: 14px; padding: 10px var(--sp-4) 10px var(--sp-3); }
+.setmenu .setlist__lead { position: relative; width: 56px; height: 40px; justify-content: center; border-radius: var(--r-s);
+  background: var(--card-deep); overflow: hidden; box-sizing: border-box; }
+.setmenu .setlist__lead:not(.setprev) > i { width: 12px; height: 12px; border-radius: 4px; }
+.setmenu .setlist__ava, .setmenu .setlist__ic { width: 24px; height: 24px; }
+.setmenu .setlist__ic { background: var(--card); }
+/* Muestra del tema en el cuadro del menú: claro | oscuro, con los colores fijos de cada tema. */
+.setprev--theme > span { flex: 1; display: flex; flex-direction: column; gap: 3px; padding: 7px 4px 0 6px; background: var(--thp-light-bg); }
+.setprev--theme > span + span { padding: 7px 6px 0 4px; background: var(--thp-dark-bg); }
+.setprev--theme i { display: block; height: 8px; border-radius: 3px; background: var(--thp-light-card); }
+.setprev--theme i:first-child { height: 3px; width: 60%; border-radius: 2px; background: var(--thp-light-ink); }
+.setprev--theme > span + span i { background: var(--thp-dark-card); }
+.setprev--theme > span + span i:first-child { background: var(--thp-dark-ink); }
+/* Más: píldoras de 48 en dos columnas. */
+.setpills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.setpill { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 48px; padding: 0 var(--sp-3);
+  border-radius: var(--r-full); background: var(--card); font-size: var(--t-body-s); font-weight: 600; text-align: center; }
+.setpill svg { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; }
+.setdanger { align-self: center; margin-top: var(--sp-2); min-height: 44px; padding: 0 var(--sp-5); border-radius: var(--r-full);
+  background: none; color: var(--neg-ink); font-size: var(--t-body-m); font-weight: 600; }
+.setlist__row:hover, .setpill:hover { background: color-mix(in srgb, var(--text) 4%, var(--card)); }
+.setdanger:hover { background: var(--neg-soft); }
+/* En la sidebar de la compu las píldoras no entran de a dos: una columna. */
+@media (min-width: 960px) {
+  #view-ajustes .setpills { grid-template-columns: 1fr; } #view-ajustes .setpill { justify-content: flex-start; }
+}
+/* La sección abierta (sólo se ve en la sidebar de desktop): aro lima. */
+.setmenu .is-active { box-shadow: inset 0 0 0 2px var(--accent); }
+.setmenu .setdanger.is-active { box-shadow: inset 0 0 0 2px var(--neg-ink); }
+/* Un subtítulo dentro de una tarjeta de Ajustes (en --accent-ink, como los encabezados de lista de Android). */
+.setsub { display: block; margin: var(--sp-5) 0 var(--sp-2); color: var(--accent-ink); font-size: var(--t-body-m); font-weight: 600; }
+.setcard__head + .setsub, .setcard__lead + .setsub { margin-top: 0; }
+/* Elegir tocando una muestra (Apariencia): la muestra arriba, el nombre abajo, la
+   elegida con aro lima. */
+.setpick { display: grid; gap: 10px; padding: var(--sp-3); border-radius: var(--r-group); background: var(--set-surf, var(--card-deep)); }
+.setpick--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.setpick--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.setpick__opt { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 0; border: none;
+  background: none; color: var(--muted); font: inherit; font-size: var(--t-body-s); font-weight: 600; cursor: pointer; }
+.setpick__opt.active { color: var(--text); }
+.setpick__box { display: flex; width: 100%; height: 116px; box-sizing: border-box; overflow: hidden; border-radius: var(--r-s);
+  background: var(--set-well, var(--card)); outline: 1px solid var(--outline); outline-offset: -1px;
+  transition: outline-color var(--dur-s) var(--ease-effect); }
+/* El aro va como outline: se pinta encima de la muestra (un box-shadow inset lo tapaba). */
+.setpick__opt.active .setpick__box { outline: 2.5px solid var(--accent-ink); outline-offset: -2.5px; }
+.setpick__opt:focus-visible { outline: none; }
+.setpick__opt:focus-visible .setpick__box { box-shadow: 0 0 0 3px var(--focus); }
+/* Muestra del tema (Apariencia ▸ Tema): un esquema de la pantalla en cada tema. */
+.thp { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 12px 10px; border: 2.5px solid transparent; }
+.thp i { display: block; height: 26px; border-radius: 6px; }
+.thp i:first-child { height: 8px; width: 60%; border-radius: 4px; }
+.thp--light { background: var(--thp-light-bg); } .thp--light i { background: var(--thp-light-card); } .thp--light i:first-child { background: var(--thp-light-ink); }
+.thp--dark { background: var(--thp-dark-bg); } .thp--dark i { background: var(--thp-dark-card); } .thp--dark i:first-child { background: var(--thp-dark-ink); }
+.setpick__ic { width: 36px; height: 36px; border-radius: var(--r-s); background: var(--set-surf, var(--card-deep)); display: grid; place-items: center; overflow: hidden; }
+.setpick__ic svg { width: 20px; height: 20px; }
+/* ---- Sub-pantallas de Ajustes, todas con el mismo lenguaje ----
+   Las superficies van en variables: en la compu la sección vive en una tarjeta y sus
+   grupos van en card-deep (lo hundido, en card); en el celular los grupos van sueltos
+   sobre el fondo, en card, y lo hundido pasa a card-deep (ver la media query mobile). */
+.setcard { --set-surf: var(--card-deep); --set-well: var(--card); }
+.setgroup { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-group); background: var(--set-surf); }
+.setgroup--row { display: flex; align-items: center; gap: var(--sp-3); min-height: 56px; box-sizing: border-box; }
+.setgroup--row code { flex: 1; min-width: 0; font-family: var(--code); font-size: var(--t-body-s); overflow-wrap: anywhere; }
+.setgroup--row .copybtn { background: var(--set-well); }
+.setgroup__t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.setgroup__t b { font-size: var(--t-body); font-weight: 600; }
+.setgroup__t small { font-size: var(--t-label); color: var(--muted); }
+.setgroup__t small .amt-in { color: var(--accent-ink); font-weight: 600; }
+.setgroup__hint { margin: var(--sp-2) var(--sp-1) 0; font-size: var(--t-body-s); color: var(--muted); }
+.setgroup__hint:empty { display: none; }
+.setgroup__txt { margin: 0; font-size: var(--t-body-m); line-height: 1.5; }
+.setgroup .set__btn { background: var(--set-well); }
+.setgroup .setcta { margin-top: var(--sp-3); }
+.setgroup .setcard__hint { display: block; margin: 0; }
+/* El botón principal de una sub-pantalla: píldora lima a lo ancho (danger: coral tonal). */
+.setcta { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: 48px;
+  margin-top: var(--sp-3); padding: 0 var(--sp-5); border: none; border-radius: var(--r-full); box-sizing: border-box;
+  background: var(--accent); color: var(--on-accent); font: inherit; font-size: var(--t-body); font-weight: 700; cursor: pointer; }
+.setcta svg { width: 18px; height: 18px; }
+.setcta:disabled { opacity: .5; cursor: default; }
+.setcta--danger { background: var(--neg-soft); color: var(--neg-ink); }
+/* "Nuevo …" al pie de una lista (setNewRow): fila punteada. Lo de crear va SIEMPRE al pie. */
+.setnew { width: 100%; box-sizing: border-box; margin-top: var(--sp-2); }
+.bknew { border: 1.5px dashed var(--gray-seg); border-radius: var(--r-card); padding: 18px;
+  background: none; cursor: pointer; font-family: inherit; color: var(--faint);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  min-height: 168px; transition: border-color var(--dur-s) var(--ease-effect), color var(--dur-s) var(--ease-effect); }
+.bknew:hover { border-color: var(--faint); color: var(--muted); }
+.bknew__ic { width: 38px; height: 38px; border-radius: var(--r-s); border: 1.5px dashed currentColor;
+  display: grid; place-items: center; }
+.bknew__ic svg { width: 17px; height: 17px; }
+.bknew > span:last-child { font-size: var(--t-body-m); font-weight: 600; }
+/* Variante fila: a lo ancho, con sublínea de ejemplos. */
+.bknew--row { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 0; padding: 14px 18px; text-align: left; }
+.bknew__txt { display: flex; flex-direction: column; min-width: 0; }
+.bknew--row .bknew__txt > span { font-size: var(--t-body-m); font-weight: 600; color: var(--text); }
+.bknew__txt small { font-size: var(--t-body-s); color: var(--faint); }
+/* Las listas de las sub-pantallas son listas agrupadas: 2px entre filas, radio chico
+   adentro y grande afuera (.setrows con .setrow / .frd-row adentro). */
+.setcard .setrows { display: flex; flex-direction: column; gap: 2px; margin-top: 0; }
+.setcard .setrows > :is(.frd-row, .setrow) { border-radius: var(--r-group-in); background: var(--set-surf); }
+.setcard .setrow:has(input:checked) { background: color-mix(in srgb, var(--accent) 12%, var(--set-surf)); }
+.setcard .setrows > :first-child { border-top-left-radius: var(--r-group); border-top-right-radius: var(--r-group); }
+.setcard .setrows > :last-child { border-bottom-left-radius: var(--r-group); border-bottom-right-radius: var(--r-group); }
+.setcard .frd-row { margin: 0; padding: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-3); min-height: 56px; box-sizing: border-box; }
+.setcard .frd-row:hover { background: color-mix(in srgb, var(--text) 4%, var(--set-surf)); }
+.setcard > .setrow { margin-top: var(--sp-2); background: var(--set-surf); border-radius: var(--r-group); min-height: 56px; padding-inline: var(--sp-4) var(--sp-3); }
+.setcard .setlist--in { margin-top: var(--sp-3); }
+.setcard .setlist--in .setlist__row { background: var(--set-surf); }
+/* Una opción dentro de una tarjeta de Ajustes: nombre a la izquierda, control a la derecha. */
+.setopt { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 12px;
+  font-size: var(--t-body); font-weight: 500; }
+.setopt--sep { border-top: 1px solid var(--outline); margin-top: 16px; padding-top: 16px; }
+.setpage__title { margin: 0; font-size: var(--t-headline-s); font-weight: 700; letter-spacing: -.01em; }
+/* El pie del menú de Ajustes: la versión que corre, centrada y en gris. */
+.setfoot { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: var(--sp-3);
+  padding-top: var(--sp-3); border-top: 1px solid var(--outline); }
+.setfoot__ver { min-height: 36px; padding: 0 14px; border: none; border-radius: var(--r-full); background: none; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: var(--t-body-s); font-weight: 600; font-variant-numeric: tabular-nums; }
+.setfoot__ver:hover { color: var(--text); }
+/* Versión nueva esperando: su propio banner, arriba de todo en Ajustes; abre el modal. */
+.setupd { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: none; cursor: pointer;
+  border-radius: var(--r-l); background: var(--accent-soft); color: var(--text); font: inherit; text-align: left; }
+.setupd__ico { width: 36px; height: 36px; border-radius: var(--r-full); background: var(--accent); color: var(--on-accent);
+  display: grid; place-items: center; flex-shrink: 0; }
+.setupd__ico svg { width: 20px; height: 20px; }
+.setupd__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.setupd__txt b { font-size: var(--t-body); }
+.setupd__txt small { font-size: var(--t-body-s); color: var(--muted); }
+#set-upd:empty { display: none; }
+.setpage__back { flex-shrink: 0; width: 40px; height: 40px; border: none; cursor: pointer; padding: 0;
+  display: grid; place-items: center; border-radius: 50%; background: var(--card); color: var(--text); }
+.setpage__back svg { width: 20px; height: 20px; stroke-width: 1.8; }
+.setpage__back:hover { background: var(--card-deep); }
+/* La cuenta: una fila con la cara, el nombre y Salir (un botón con su palabra, que pregunta antes). */
+.set__acct { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px; border-radius: var(--r-group); }
+.set__acct[hidden] { display: none; }
+.set__acct img { width: 40px; height: 40px; border-radius: 50%; }
+.set__acct .set__acct-ava { width: 40px; height: 40px; background: var(--accent); color: var(--on-accent); font-weight: 800; }
+.set__acct-info { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
+.set__acct-info b { font-size: var(--t-body); }
+.set__acct-info span { font-size: var(--t-label); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set__acct-go { display: flex; align-items: center; gap: var(--sp-3); flex: 1; min-width: 0; padding: 0; border: none;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--r-s); }
+.set__acct-go:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.set__acct-ava { width: 46px; height: 46px; border-radius: 50%; background: var(--card-deep); color: var(--text);
+  display: grid; place-items: center; font-weight: 700; font-size: var(--t-title); flex-shrink: 0; }
+.set__out { display: inline-flex; align-items: center; gap: 6px; height: 40px; flex-shrink: 0; padding: 0 14px 0 10px;
+  border: none; border-radius: var(--r-full); background: var(--card-deep); color: var(--text); cursor: pointer;
+  font: inherit; font-size: var(--t-body-s); font-weight: 600; }
+.set__out:hover { background: color-mix(in srgb, var(--text) 8%, var(--card-deep)); }
+.set__out svg { width: 18px; height: 18px; color: var(--muted); }
+.set__badge { font-size: var(--t-label); font-weight: 600; color: var(--muted); background: var(--chip-bg);
+  border-radius: var(--r-chip); padding: 1px 8px; letter-spacing: 0; }
+.set__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; }
+.set__row span { font-size: var(--t-body); }
+.set__btn { flex-shrink: 0; border: none; background: var(--card-deep); color: var(--text);
+  border-radius: var(--r-full); padding: 9px 16px; font-weight: 600; font-size: var(--t-body-m); cursor: pointer;
+  transition: filter var(--dur-s) var(--ease-effect); }
+.set__btn:hover { filter: brightness(1.08); }
+.set__btn:disabled { opacity: .5; cursor: default; }
+.set__btn--danger { color: var(--neg-ink); background: var(--neg-soft); }
+.set__btn--danger:hover { filter: brightness(1.1); }
+a.set__btn { text-decoration: none; display: inline-flex; align-items: center; }
+.set__btnrow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+/* Botón de copiar (un link, una key) dentro de un .setgroup--row. */
+.copybtn { border: none; background: var(--card); border-radius: var(--r-full);
+  padding: 6px 12px; font-weight: 600; font-size: var(--t-body-s); cursor: pointer; flex-shrink: 0; }
+.copybtn:hover { filter: brightness(1.08); }
+
+/* Preferencia que se prende y apaga: la fila entera es un <label class="setrow">
+   con el texto y el <input type="checkbox"> (que se dibuja como switch). */
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; box-sizing: border-box;
+  padding: 10px 12px; border-radius: var(--r-m); background: var(--card-deep); color: var(--text); font-size: var(--t-body-m); font-weight: 700; cursor: pointer; }
+/* Switch M3 (52×32): una preferencia que se prende y apaga no es un checkbox.
+   Manija chica apagada, grande y con ✓ prendida; el resorte la lleva. */
+.setrow input { appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 52px; height: 32px; margin: 0;
+  border-radius: var(--r-full); border: 2px solid var(--muted); background: var(--card); position: relative; cursor: pointer;
+  transition: background-color var(--dur-s) var(--ease-effect), border-color var(--dur-s) var(--ease-effect); }
+.setrow input::after { content: ''; position: absolute; top: 50%; left: 6px; width: 16px; height: 16px; margin-top: -8px;
+  border-radius: 50%; background: var(--muted);
+  transition: transform var(--dur-m) var(--spring), width var(--dur-m) var(--spring), height var(--dur-m) var(--spring), margin var(--dur-m) var(--spring), left var(--dur-m) var(--spring), background-color var(--dur-s) var(--ease-effect); }
+.setrow input:checked { background: var(--accent); border-color: var(--accent); }
+.setrow input:checked::after { left: 2px; width: 24px; height: 24px; margin-top: -12px; transform: translateX(22px); background: var(--on-accent);
+  background-image: var(--switch-check-url);
+  background-size: 14px; background-position: center; background-repeat: no-repeat; }
+.setrow input:active::after { width: 28px; height: 28px; margin-top: -14px; }
+.setrow:has(input:checked) { background: var(--accent-soft); }
+.setrow:active { filter: brightness(.96); }
+
+/* ---------------- Avatares ---------------- */
+/* Una persona es una cara con su inicial, en su color: fondo fillOf(hex) y la
+   inicial en --on-tone (style="background:…" desde JS). .frd-row__ava va con la
+   forma de trébol (#shape-clover, clipPath en el HTML); .pava es redonda. */
+.pava { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--t-body-m); font-weight: 700; line-height: 1; }
+.pava--sm { width: 24px; height: 24px; font-size: var(--t-label-s); }
+.pava--xs { width: 18px; height: 18px; font-size: var(--t-label-s); box-shadow: 0 0 0 2px var(--card); }
+.pava--chip { width: 14px; height: 14px; font-size: var(--t-label-s); }
+.pstack { display: inline-flex; flex-shrink: 0; }
+.pstack .pava + .pava { margin-left: -6px; }
+/* Fila de amigo (friendRowHtml): UN botón con la cara, el nombre y "›"; las
+   acciones viven en su ficha. */
+.frd-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 8px; margin: 0 -8px;
+  box-sizing: content-box; border: none; border-radius: var(--r-m); background: none; color: inherit;
+  font: inherit; text-align: left; cursor: pointer; transition: background var(--dur-s) var(--ease-effect); }
+.frd-row:hover { background: var(--card-deep); }
+
+.frd-row__ava { width: 40px; height: 40px; clip-path: url(#shape-clover); color: var(--on-tone);
+  display: grid; place-items: center; font-weight: 700; font-size: var(--t-body); flex-shrink: 0; }
+.frd-row__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.frd-row__nm { font-size: var(--t-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.frd-row__sub { font-size: var(--t-body-s); color: var(--muted); }
+.frd-row__chev { flex-shrink: 0; color: var(--muted); font-size: var(--t-title); }
+
+/* Toast (snackbar), el mismo para toda la app: flota arriba de la barra / de
+   Guardar, ancho de la pantalla menos el margen (tope 480 en la compu), superficie
+   oscura en los dos temas (--toast-*). Opcionales: ícono a la izquierda (spinner,
+   error, ok) o miniatura, una frase en negrita al principio, una acción en lima y ✕.
+   Se saca deslizándolo de costado o hacia abajo (`toastGestures`). */
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); transform: translate(-50%, 12px);
+  z-index: 95; width: min(calc(100vw - 32px), 480px); min-height: 52px; display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-radius: var(--r-m); background: var(--toast-bg); color: var(--toast-text);
+  font-size: var(--t-body-m); font-weight: 500; line-height: 1.35; text-align: left;
+  box-shadow: var(--e3); opacity: 0; pointer-events: none; touch-action: none; /* se desliza para sacarlo */
+  transition: opacity var(--dur-m) var(--ease-effect), transform var(--dur-m) var(--spring); }
+.toast--show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast--tail { padding-right: 6px; } /* con acción o ✕: el botón trae su propio aire */
+.toast--thumb { padding-left: 8px; }
+.toast__msg { flex: 1; min-width: 0; }
+.toast__lead { font-weight: 700; }
+.toast__dot { display: inline-block; width: 7px; height: 7px; border-radius: var(--r-full); background: var(--toast-act); vertical-align: middle; }
+.toast__ic { flex: none; display: flex; width: 20px; height: 20px; color: var(--toast-act); }
+.toast__ic svg { width: 20px; height: 20px; }
+.toast__ic--error { color: var(--toast-err); }
+.toast__ic--spin svg { animation: toast-spin .9s linear infinite; }
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+.toast__thumb { flex: none; width: 30px; height: 38px; border-radius: 6px; object-fit: cover; background: var(--toast-muted); }
+.toast__act { flex: none; border: none; background: transparent; color: var(--toast-act);
+  font: inherit; font-weight: 700; min-height: 36px; padding: 0 10px; border-radius: var(--r-full); cursor: pointer; }
+.toast__act:hover { background: var(--toast-hover); }
+.toast__x { flex: none; border: none; background: transparent; color: var(--toast-muted); width: 36px; height: 36px;
+  border-radius: var(--r-full); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.toast__x:hover { color: var(--toast-text); background: var(--toast-hover); }
+.toast__x svg { width: 16px; height: 16px; }
+@media (prefers-reduced-motion: reduce) { .toast__ic--spin svg { animation: none; } }
+
+/* Diálogo centrado (showUpdateNudge y los propios): con scrim, y SOBRE el
+   gate de login (z 100) — una actualización tiene que poder aplicarse aún sin sesión. */
+.upd-dialog { position: fixed; inset: 0; z-index: 101; display: flex; align-items: center;
+  justify-content: center; padding: 16px; overscroll-behavior: contain; touch-action: none; }
+/* El fondo no scrollea con el aviso abierto (iOS ignora el overflow del body: por eso
+   también el touch-action de arriba). Lo que scrollea son sólo las Novedades, que pueden
+   ser largas: el encabezado y "Actualizar ahora" quedan siempre a la vista. */
+body.upd-open { overflow: hidden; }
+.upd-dialog__notes { touch-action: pan-y; overscroll-behavior: contain; }
+/* Diálogos propios (askConfirm / askPrompt / showError): mismo shell, más chicos. */
+.cdlg__panel { max-width: 360px; text-align: center; padding: 26px 22px 20px; }
+.cdlg__ico { display: grid; place-items: center; width: 56px; height: 56px; clip-path: url(#shape-cookie); margin: 0 auto 12px;
+  background: var(--card-deep); color: var(--muted); }
+.cdlg__ico svg { width: 24px; height: 24px; }
+.cdlg__ico--danger { background: var(--neg-soft); color: var(--neg); }
+.cdlg__title { margin: 0; font-size: var(--t-title-l); font-weight: 700; letter-spacing: -.01em; line-height: 1.25; text-wrap: balance; }
+.cdlg__text { margin: 8px auto 0; font-size: var(--t-body); line-height: 1.45; color: var(--muted); max-width: 30ch; }
+.cdlg__input { display: block; width: 100%; margin-top: 16px; padding: 12px 14px; border-radius: var(--r-m); border: none;
+  background: var(--card-deep); color: var(--text); font: inherit; font-size: var(--t-body-l); text-align: left; }
+.cdlg__input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* Botones a mitad y mitad del ancho: cancelar a la izquierda, la acción a la derecha. */
+.cdlg__acts { display: flex; gap: 8px; margin-top: 20px; }
+.cdlg__btn { flex: 1; min-width: 0; border: none; border-radius: var(--r-full); padding: 13px 14px; font: inherit; font-weight: 700; font-size: var(--t-body); cursor: pointer; }
+.cdlg__btn--cancel { background: var(--card-deep); color: var(--text); }
+.cdlg__btn--ok { background: var(--accent); color: var(--on-accent); }
+.cdlg__btn--danger { background: var(--neg); color: var(--on-neg); }
+.cdlg__btn:disabled { opacity: .45; cursor: default; }
+.cdlg__lbl { display: block; margin: 16px 0 -8px; font-size: var(--t-body-s); font-weight: 600; color: var(--muted); text-align: left; }
+.cdlg__link { margin-top: 10px; border: none; background: none; padding: 6px 0; font: inherit; font-size: var(--t-body-m); font-weight: 600; color: var(--accent-ink); cursor: pointer; }
+.upd-dialog__scrim { position: absolute; inset: 0; background: var(--scrim-strong); backdrop-filter: blur(4px);
+  animation: upd-fade var(--dur-m) var(--ease-effect) both; }
+.upd-dialog__panel { position: relative; width: 100%; max-width: 420px; max-height: calc(100dvh - 32px);
+  display: flex; flex-direction: column; overflow: hidden; background: var(--surface-high); color: var(--text); border-radius: var(--r-card);
+  padding: 30px 24px 20px; text-align: center; box-shadow: var(--e3);
+  animation: upd-pop var(--dur-m) var(--spring) both; }
+@keyframes upd-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes upd-pop { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+.upd-dialog__panel > * { flex: none; }
+.upd-dialog__logo { align-self: center; display: inline-block; width: 64px; height: 64px; border-radius: var(--r-m);
+  background: var(--logo-bg) var(--logo-url) center / 64% no-repeat; background-color: var(--card-deep);
+  box-shadow: 0 0 0 6px var(--accent-soft); }
+.upd-dialog__kicker { margin: 18px 0 2px; font-size: var(--t-body-s); font-weight: 600; color: var(--accent-ink); }
+.upd-dialog__title { margin: 0; font-size: var(--t-headline); font-weight: 700; letter-spacing: -.01em; }
+.upd-dialog__meta { margin: 12px 0 0; }
+.upd-dialog__meta p { margin: 0; }
+.upd-dialog__ver { font-size: var(--t-body-l); font-variant-numeric: tabular-nums; }
+.upd-dialog__ver b { font-weight: 700; }
+.upd-dialog__old { color: var(--muted); }
+.upd-dialog__date { margin-top: 4px !important; font-size: var(--t-body-m); color: var(--muted); }
+.upd-dialog__date:empty { display: none; }
+.upd-dialog__panel > .upd-dialog__notes { flex: 0 1 auto; min-height: 72px; overflow-y: auto; }
+.upd-dialog__notes { margin: 18px 0 0; padding: 14px 16px; border-radius: var(--r-m); background: var(--card-deep);
+  text-align: left; }
+.upd-dialog__notes[hidden] { display: none; }
+.upd-dialog__h { margin: 0 0 6px; font-size: var(--t-body-m); font-weight: 700; }
+.upd-dialog__nv { margin: 10px 0 2px; font-size: var(--t-body-s); font-weight: 600; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.upd-dialog__list { margin: 0; padding-left: 18px; font-size: var(--t-body-m); line-height: 1.45; }
+.upd-dialog__list li + li { margin-top: 4px; }
+.upd-dialog__acts { display: flex; flex-direction: column; gap: 4px; margin-top: 22px; }
+.upd-dialog__go { width: 100%; padding: 14px 18px; border: none; border-radius: var(--r-full);
+  background: var(--accent); color: var(--on-accent); font: inherit; font-size: var(--t-body-l); font-weight: 700;
+  cursor: pointer; transition: filter var(--dur-s) var(--ease-effect); }
+.upd-dialog__go:hover { filter: brightness(1.06); }
+.upd-dialog__go:disabled { opacity: .7; cursor: default; }
+.upd-dialog__later { padding: 10px; border: none; background: none; color: var(--muted); font: inherit;
+  font-size: var(--t-body); font-weight: 600; cursor: pointer; }
+.upd-dialog__later:hover { color: var(--text); }
+.upd-dialog__later:disabled { visibility: hidden; }
+/* Ayuda larga (showHelp): texto a la izquierda; si no entra, scrollea adentro del panel. */
+.upd-dialog__panel > .cdlg__help { flex: 0 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+.cdlg__help { margin-top: 12px; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.cdlg__help p { margin: 0; font-size: var(--t-body); line-height: 1.45; color: var(--muted); }
+
+/* ============================================================================
+   Gate de login
+   ========================================================================== */
+/* Sin sesión: la tarjeta de login (loginCardHtml) sobre el fondo. */
+.login-gate { position: fixed; inset: 0; z-index: 100; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; padding: 24px; }
+.login-gate[hidden] { display: none; }
+.login-card { background: var(--card); border: none;
+  border-radius: var(--r-card); padding: 40px 32px; max-width: 360px; width: 100%; text-align: center; }
+.login-card__logo { display: inline-block; width: 56px; height: 56px; border-radius: var(--r-m);
+  background: var(--logo-bg) var(--logo-url) center / 64% no-repeat;
+  /* la card de login ya es blanca en claro: placa card-deep para que no se funda */
+  background-color: var(--card-deep); }
+.login-card__btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 18px; border-radius: var(--r-full);
+  background: var(--accent); color: var(--on-accent); font-weight: 700; text-decoration: none;
+  transition: filter var(--dur-s) var(--ease-effect); }
+.login-card__btn:hover { filter: brightness(1.06); }
+.login-card__btn svg { background: var(--plate); border-radius: 50%; padding: 3px; box-sizing: content-box; }
+.login-card__title { margin: 14px 0 4px; font-size: var(--t-headline); font-weight: 700; letter-spacing: -.01em; }
+.login-card__msg { margin: 0 0 24px; color: var(--muted); font-size: var(--t-body); }
+.login-card__msg--error { color: var(--neg-ink); }
+.login-card__more { display: inline-block; margin-top: 18px; font-size: var(--t-body-m); font-weight: 600; }
+
+/* Foco programático en el panel de un overlay (trapFocus): sin anillo, no es un control. */
+.modal__panel:focus, .catpick__sheet:focus, .cdlg__panel:focus, .upd-dialog__panel:focus { outline: none; }
+
+/* ============================================================================
+   Capa Material 3 Expressive compartida (sobre las clases existentes)
+   ========================================================================== */
+/* Botones: tres tamaños (32 · 40 · 48/56), una forma (píldora) que se "cuadra"
+   al presionar —el morph de Expressive— y una capa de estado al apretar. */
+.copybtn, .offbar__btn { min-height: 32px; }
+.set__btn, .mhead__search, .upd-dialog__later, .cdlg__link, .helplink { min-height: 40px; }
+.empty__btn, .cdlg__btn { min-height: 48px; }
+.mvf__submit, .upd-dialog__go, .login-card__btn { min-height: 56px; }
+.copybtn, .offbar__btn, .set__btn,
+.empty__btn, .cdlg__btn, .mvf__submit, .upd-dialog__go, .login-card__btn, .fab {
+  transition: border-radius var(--dur-m) var(--spring), transform var(--dur-m) var(--spring), box-shadow var(--dur-s) var(--ease-effect),
+    background-color var(--dur-s) var(--ease-effect), color var(--dur-s) var(--ease-effect), filter var(--dur-s) var(--ease-effect), flex-grow var(--dur-m) var(--spring); }
+/* Press. Botones chicos y medianos (32/40): capa de estado (12% de su tinta) y un
+   encogimiento leve; la píldora NO cambia de forma (a ese tamaño el morph a
+   cuadrado se veía raro). Los grandes (48/56) y el FAB sí hacen el morph
+   Expressive: la píldora pasa a radio 16. */
+.copybtn:active, .offbar__btn:active, .set__btn:active {
+  transform: scale(.98); box-shadow: inset 0 0 0 100vmax color-mix(in srgb, currentColor 12%, transparent); }
+.empty__btn:active, .cdlg__btn:active, .mvf__submit:active, .upd-dialog__go:active, .login-card__btn:active {
+  border-radius: var(--r-m); transform: scale(.97); box-shadow: inset 0 0 0 100vmax color-mix(in srgb, currentColor 12%, transparent); }
+.fab:active { border-radius: var(--r-m); transform: scale(.94); }
+.mrow:active, .setlist__row:active, .setpill:active, .bkpick__row:active, .frd-row:active {
+  box-shadow: inset 0 0 0 100vmax color-mix(in srgb, currentColor 10%, transparent); }
+/* Botones de ícono: 40px mínimo (M3 "small"). */
+.modal__x, .mhead__search, .mhead__ava, .avatar-btn, .rail__toggle, .setpage__back { min-width: 40px; min-height: 40px; }
+
+/* ---------- Tarjetas de elección ("F3", choiceOptHtml) ----------
+   Para elegir UNA respuesta dentro de un formulario. Cada opción es una tarjeta
+   con ícono, nombre y qué hace; la elegida va en tono lima con aro accent-ink (el
+   lima lleno queda para las acciones). */
+.choice { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.choice__opt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 10px 12px 11px;
+  border: none; border-radius: var(--r-s); background: var(--choice-bg, var(--card-deep)); color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; outline: 1px solid transparent; outline-offset: -1px;
+  transition: background-color var(--dur-s) var(--ease-effect), outline-color var(--dur-s) var(--ease-effect); }
+.choice__opt b { font-size: var(--t-body-m); font-weight: 700; line-height: 1.25; }
+.choice__opt small { font-size: var(--t-label); color: var(--muted); line-height: 1.3; }
+.choice__ic { display: grid; color: var(--muted); margin-bottom: 2px; }
+.choice__ic svg { width: 20px; height: 20px; }
+.choice__opt:hover { background: color-mix(in srgb, var(--text) 5%, var(--choice-bg, var(--card-deep))); }
+.choice__opt.active { background: color-mix(in srgb, var(--accent) 24%, var(--choice-bg, var(--card-deep))); outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.choice__opt.active .choice__ic { color: var(--accent-ink); }
+.choice__opt:disabled { opacity: .45; cursor: default; }
+.choice__opt:focus-visible { box-shadow: 0 0 0 3px var(--focus); }
+.choice__opt:active:not(:disabled) { box-shadow: inset 0 0 0 100vmax color-mix(in srgb, currentColor 8%, transparent); }
+/* ---------- Lista para tildar (checkRowHtml) ----------
+   Elegir VARIAS opciones: filas de lista agrupada con lo suyo a la izquierda y un
+   tilde a la derecha. Vacío = un cuadradito con borde; marcado = el tilde en tono
+   lima con aro accent-ink, como la tarjeta elegida (nunca lima lleno). */
+.checklist { display: flex; flex-direction: column; gap: 2px; }
+.checkrow { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 60px; padding: 10px 14px;
+  border: none; border-radius: var(--r-group-in); background: var(--choice-bg, var(--card-deep)); color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; transition: background-color var(--dur-s) var(--ease-effect); }
+.checklist > .checkrow:first-child { border-top-left-radius: var(--r-group); border-top-right-radius: var(--r-group); }
+.checklist > .checkrow:last-child { border-bottom-left-radius: var(--r-group); border-bottom-right-radius: var(--r-group); }
+.checkrow__lead { display: grid; flex: none; }
+.checkrow__t { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.checkrow__t b { font-size: var(--t-body-m); font-weight: 700; line-height: 1.25; }
+.checkrow__t small { font-size: var(--t-label); color: var(--muted); line-height: 1.3; }
+.checkrow__box { display: grid; place-items: center; flex: none; width: 24px; height: 24px; box-sizing: border-box;
+  border-radius: var(--r-xs); box-shadow: inset 0 0 0 2px var(--muted); color: var(--accent-ink);
+  transition: background-color var(--dur-s) var(--ease-effect), box-shadow var(--dur-s) var(--ease-effect); }
+.checkrow__box svg { width: 16px; height: 16px; stroke-width: 3; opacity: 0; transform: scale(.6);
+  transition: opacity var(--dur-s) var(--ease-effect), transform var(--dur-s) var(--spring); }
+.checkrow.active .checkrow__box { background: color-mix(in srgb, var(--accent) 24%, var(--choice-bg, var(--card-deep))); box-shadow: inset 0 0 0 2px var(--accent-ink); }
+.checkrow.active .checkrow__box svg { opacity: 1; transform: none; }
+@media (hover: hover) { .checkrow:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 5%, var(--choice-bg, var(--card-deep))); } }
+.checkrow:active:not(:disabled) { box-shadow: inset 0 0 0 100vmax color-mix(in srgb, currentColor 8%, transparent); }
+.checkrow:focus-visible { outline: 3px solid var(--focus); outline-offset: 0; }
+.checkrow:disabled { cursor: default; }
+.checkrow:disabled > * { opacity: .45; }
+/* Un avatar como lead de la fila (una .pava de 32). */
+.checkrow__lead .pava { width: 32px; height: 32px; font-size: var(--t-label); }
+.setcard .choice { --choice-bg: var(--set-surf, var(--card-deep)); }
+/* Muchas opciones (varias personas, las monedas): bajan de renglón en
+   vez de achicarse hasta no leerse. */
+.choice--wrap { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+.choice__ic .pava { width: 28px; height: 28px; font-size: var(--t-label); }
+
+/* ---------- Riel de opciones ("F2", freqPillsHtml) ----------
+   Varias opciones cortas que responden a una elección ya hecha, en un riel; la
+   elegida es una tarjeta que flota encima, sin color de acento. En oscuro el riel
+   va más oscuro que la superficie y la elegida bien más clara. */
+.optrail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: var(--r-s); background: var(--optrail-track); }
+.optrail__opt { min-width: 0; min-height: 40px; padding: 0 8px; border: none; border-radius: calc(var(--r-s) - 3px); background: none;
+  color: var(--muted); font: inherit; font-size: var(--t-body-m); font-weight: 600; white-space: nowrap; cursor: pointer;
+  transition: background-color var(--dur-s) var(--ease-effect), color var(--dur-s) var(--ease-effect); }
+.optrail__opt:hover { color: var(--text); }
+/* Una sola fila con todas las opciones (ej. 3 · 6 · 12 · 18). */
+.optrail--row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.optrail__opt.active { background: var(--optrail-on); color: var(--text); font-weight: 700; box-shadow: var(--e1); }
+.optrail__opt:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+
+/* Progreso (barra con hueco y punto de tope, M3): la pista en --chip-bg, el
+   relleno lima con 4px de hueco antes de la pista y un punto al final.
+   <div class="progress"><div class="progress__fill" style="width:40%"></div></div>
+   (En gastos: .cuota__bar / .cuota__fill.) */
+.progress { position: relative; height: 12px; border-radius: var(--r-full); overflow: hidden; background: var(--chip-bg); }
+.progress__fill { position: absolute; top: 0; left: 0; bottom: 0; min-width: 12px; border-radius: var(--r-full);
+  background: var(--accent); box-shadow: 4px 0 0 var(--card); transition: width var(--dur-l) var(--spring-soft); } /* hueco de 4px entre relleno y pista */
+.progress::after { content: ''; position: absolute; right: 4px; top: 50%; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); transform: translateY(-50%); } /* punto de tope */
+
+/* Alto contraste del sistema: los grises decorativos suben a muted y los
+   divisores se ven; en forced-colors (Windows) las tarjetas recuperan un borde
+   y los controles custom conservan su dibujo. */
+@media (prefers-contrast: more) {
+  :root { --faint: var(--muted); --outline: var(--muted); --accent-soft: color-mix(in srgb, var(--accent) 30%, transparent); }
+}
+@media (forced-colors: active) {
+  .tcard, .mrow, .modal__panel, .catpick__sheet, .upd-dialog__panel, .toast, .tabbar, .setrow, .accf__field { border: 1px solid CanvasText; }
+  .setrow input, .bkpick__radio, .progress__fill, .rail--collapsed .rail__btn::before { forced-color-adjust: none; }
+  .setrow input { border-color: ButtonText; background: Canvas; }
+  .setrow input::after { background: ButtonText; }
+  .setrow input:checked { background: Highlight; border-color: Highlight; }
+  .setrow input:checked::after { background: HighlightText; background-image: none; }
+  .fab, .mvf__submit, .rail__fab { border: 2px solid ButtonText; }
+}
+/* Menos movimiento: todo lo que se mueve o muta queda quieto; los fades se van al instante. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .spinner { clip-path: circle(50%); }
+}
+
+/* ============================================================================
+   Mobile (<960px): sin rail; header por vista arriba + tab bar flotante abajo
+   con el FAB "+" a su derecha.
+   ========================================================================== */
+@media (max-width: 959px) {
+  .rail { display: none; }
+  /* El padding-bottom despeja la fila inferior (barra ~62px / FAB 56px + bottom
+     16 + un respiro). */
+  .stage { padding: 0 16px calc(104px + env(safe-area-inset-bottom)); }
+  .topbar { display: none; }
+  html, body { overflow-x: clip; }
+
+  /* Header por vista: título grande + acciones + avatar 40px.
+     Sticky: título y avatar siempre visibles al scrollear. El padding-top suma
+     env(safe-area-inset-top): en el PWA de iPhone (status bar translúcida +
+     viewport-fit=cover) la app corre DEBAJO de la hora/íconos del sistema y sin
+     esto el título se pisaba con la barra de estado. */
+  .mhead { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 2px 12px;
+    position: sticky; top: 0; z-index: 40; background: var(--bg); }
+  .mhead[hidden] { display: none; }
+  .mhead__title { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; overflow: hidden;
+    font-size: min(var(--t-display-s), var(--mhead-fit, 99rem)); font-weight: 800; letter-spacing: var(--tracking-tight); color: var(--text); line-height: 1.2;
+    transition: font-size var(--dur-m) var(--spring-soft); }
+  /* Top app bar flexible (Expressive): título grande arriba de todo, chico al scrollear. */
+  .mhead--compact .mhead__title { font-size: min(var(--t-title-l), var(--mhead-fit, 99rem)); }
+  .mhead__txt { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .mhead__acts { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+  .mhead__search { position: relative; display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+    border: none; border-radius: 50%; cursor: pointer; background: var(--card); color: var(--muted); }
+  .mhead__search svg { width: 17px; height: 17px; }
+  .mhead__search[hidden] { display: none; }
+  .mhead__search::after { content: ''; position: absolute; inset: -5px; } /* 44px de toque */
+  .mhead__ava { display: grid; width: 40px; height: 40px; font-size: var(--t-body-m); font-weight: 700;
+    flex-shrink: 0; }
+  /* Área de toque de 44px (WCAG 2.5.8 / HIG) sin cambiar el dibujo: un ::after
+     transparente agranda el hit area de los controles chicos del header y del buscador. */
+  .mhead__ava, .modal__x { position: relative; }
+  .mhead__ava::after { content: ''; position: absolute; inset: -5px; }
+  .modal__x::after { content: ''; position: absolute; inset: -6px; }
+
+  /* Tab bar inferior: pill flotante compacta con hasta 4 tabs; activo = píldora
+     accent-soft. Los tabs reparten el ancho (flex) para que entren todos. */
+  /* Velo inferior: bloquea los taps entre el borde y la barra (y funde el
+     contenido que scrollea por detrás). */
+  .tabguard { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 49;
+    height: calc(92px + env(safe-area-inset-bottom)); pointer-events: auto;
+    background: linear-gradient(to top, var(--bg) 55%, transparent); }
+  /* La barra deja lugar a la derecha para el FAB, que baja a su misma altura:
+     conviven en la misma fila, separados. Va en surface-high (lo que flota) y
+     lleva 4 lugares como mucho, así cada tab tiene ~80px y la etiqueta entra entera. */
+  .tabbar { position: fixed; left: 14px; right: 82px; bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 50; display: flex; justify-content: space-around; align-items: stretch; gap: 0;
+    background: var(--surface-high); border-radius: var(--r-full); padding: 2px 4px;
+    box-shadow: var(--e3); }
+  /* Barra baja: ícono arriba + etiqueta abajo, SIEMPRE visible. El activo lleva la
+     píldora detrás; todos los tabs reparten el ancho. Anclados
+     arriba (no centrados) para que la píldora caiga justo detrás del ícono aunque
+     la letra del sistema sea más grande. Apagados en muted: la etiqueta informa. */
+  .tabbar__tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
+    flex: 1 1 0; min-width: 0; padding: 10px 0 8px; border: none; border-radius: var(--r-m); cursor: pointer;
+    background: transparent; color: var(--muted); font-family: inherit;
+    font-size: var(--t-label-s); font-weight: 600; line-height: 1.2; letter-spacing: -.01em;
+    transition: background-color var(--dur-m) var(--ease-effect), color var(--dur-m) var(--ease-effect); }
+  .tabbar__tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabbar__tab svg { width: 24px; height: 24px; stroke-width: 1.8; flex-shrink: 0; position: relative; z-index: 1; }
+  /* Indicador activo M3: píldora 56×32 detrás del ícono (la etiqueta queda
+     afuera), que se estira con resorte al cambiar de tab. */
+  /* Un solo indicador por barra (.tabbar__pill) que VIAJA al tab activo con resorte
+     (left lo fija moveTabPill en app.js); en el primer pintado aparece sin viaje. */
+  .tabbar__pill { position: absolute; top: 8px; left: 0; width: 56px; height: 32px; border-radius: var(--r-full); pointer-events: none;
+    background: var(--accent-soft); transition: left var(--dur-l) var(--spring), opacity var(--dur-s) var(--ease-effect); }
+  .tabbar__pill--off { opacity: 0; }
+  /* Ícono de trazo apagado, relleno prendido (par trazo/relleno por vista). */
+  .tabbar__tab .ic--fill, .tabbar__tab.active .ic--line { display: none; }
+  .tabbar__tab.active .ic--fill { display: block; }
+  @media (prefers-reduced-motion: reduce) { .tabbar__tab { transition: none; } }
+  /* FAB "+" aislado, a la derecha de la barra y centrado con ella (barra ~64px,
+     FAB 56: 4px más arriba que el borde de la barra). */
+  .fab { position: fixed; right: 14px; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 50;
+    width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+    display: grid; place-items: center; background: var(--accent); color: var(--on-accent); padding: 0;
+    box-shadow: var(--e3);
+    transition: transform var(--dur-m) var(--spring); }
+  .fab:active { transform: scale(.94); }
+  .fab svg { width: 24px; height: 24px; }
+  @media (prefers-reduced-motion: reduce) { .fab { transition: none; } }
+  body.no-nav .fab, .fab--hidden { display: none; }
+  /* Activo: etiqueta en tinta plena + negrita; el lima queda para el ícono y la píldora. */
+  .tabbar__tab.active { color: var(--text); font-weight: 700; }
+  .tabbar__tab.active svg { color: var(--accent-ink); }
+  body.no-nav .tabbar, body.no-nav .tabguard, .tabbar--hidden { display: none; }
+
+  /* Ajustes mobile: una sola columna; menú de secciones a pantalla completa y
+     una sub-pantalla muestra sólo su tarjeta (mismas reglas de visibilidad de
+     .setcard--active que en desktop; acá menú y tarjeta no conviven). */
+  /* align-items: el `start` de la base sirve al GRID desktop (no estirar la
+     sidebar en alto); en este flex COLUMNA controla el ANCHO y encogía las
+     tarjetas al contenido → volver al stretch para que ocupen todo el ancho. */
+  .setwrap { display: flex; flex-direction: column; align-items: stretch; }
+  .setmenu { position: static; }
+  /* Encabezado de Ajustes = top app bar flexible como .mhead: sticky, título grande
+     (display-s/800) arriba de todo y chico (title-l) al scrollear (.setpage__head--compact,
+     mismo listener de scroll). El safe-area pasa del .setwrap al encabezado, que es lo
+     que queda pegado arriba. */
+  .setwrap { padding-top: 0; }
+  .setpage__head { position: sticky; top: 0; z-index: 40; background: var(--bg); margin: 0 -2px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 2px 12px; }
+  .setpage__title { font-size: var(--t-display-s); font-weight: 800; letter-spacing: var(--tracking-tight);
+    line-height: 1.2; transition: font-size var(--dur-m) var(--spring-soft); }
+  .setpage__head--compact .setpage__title { font-size: var(--t-title-l); }
+  #view-ajustes[data-sec] .setmenu { display: none; }
+  .setgrid { display: none; }
+  #view-ajustes[data-sec] .setgrid { display: block; }
+  /* La sub-pantalla ya se titula con su sección: el label de la tarjeta sobra. */
+  #view-ajustes[data-sec] .setcard__head > .lbl { display: none; }
+  #view-ajustes[data-sec] .setcard__head:not(:has(> :not(.lbl))) { display: none; }
+  #view-ajustes[data-sec] .setpage__title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Cada sub-pantalla son grupos sueltos sobre el fondo (como la lista de Android),
+     sin la tarjeta que la envuelve en la compu: lo de adentro sube a card y lo
+     hundido baja a card-deep. */
+  #view-ajustes[data-sec] .setgrid .setcard { background: none; padding: 0; --set-surf: var(--card); --set-well: var(--card-deep); }
+  #view-ajustes[data-sec] .setcard__lead { margin: 0 var(--sp-1) var(--sp-4); }
+  #view-ajustes[data-sec] .setcard .setsub, #view-ajustes[data-sec] .setcard > .setcard__hint { margin-left: var(--sp-4); }
+  #view-ajustes[data-sec] .setcard__head { margin-bottom: var(--sp-3); }
+  /* El modal como bottom sheet: pegado abajo, radio 28 arriba. */
+  .modal { align-items: flex-end; padding: 0; }
+  .modal__panel { max-width: none; border-radius: var(--r-l) var(--r-l) 0 0; border-bottom: none;
+    /* 100% (no 92vh): con el teclado abierto el modal se achica al viewport visual
+       (ver kbAdjustModal) y el panel se mide contra ESA altura. A 92% quedaba un
+       hueco arriba donde el scrim translúcido dejaba ver la página de atrás. */
+    /* …pero nunca por encima de la barra de estado del iPhone (safe-area-top). */
+    max-height: calc(100% - env(safe-area-inset-top, 0px)); animation: popup var(--dur-l) var(--spring);
+    padding-bottom: calc(22px + env(safe-area-inset-bottom));
+    touch-action: pan-y; transition: transform var(--dur-m) var(--spring); }
+  /* Un toque más de aire arriba que en desktop: lugar para la rayita. */
+  .modal__head { padding-top: 22px; }
+  /* La rayita (.sheet__grab) vive dentro de la cabecera sticky, así acompaña al
+     título en todos los contenidos del modal. */
+  /* Formulario a PANTALLA COMPLETA (.modal--full): deja de ser
+     sheet parcial — ocupa todo el alto, sin radios. La cabecera absorbe la barra
+     de estado del iPhone (safe-area-top, mismo patrón que el header de la app);
+     rayita y swipe-down para cerrar se conservan. */
+  .modal--full .modal__panel { max-height: none; height: 100%; border-radius: 0; }
+  .modal--full .modal__head { padding-top: calc(22px + env(safe-area-inset-top, 0px)); }
+  .modal--full .modal__head > .sheet__grab { top: calc(8px + env(safe-area-inset-top, 0px)); }
+  /* La fila de 2 líneas ya es el patrón global; acá sólo se compacta. */
+  .mrow { gap: 12px; padding: 13px 8px; margin: 0 -8px; width: calc(100% + 16px); }
+  .mrow__sub { display: none; } /* lo secundario del título va en la sublínea */
+}
+@media (min-width: 960px) {
+  /* Marco Gmail: fondo del shell = superficie card (la sidebar vive sobre él,
+     sin caja propia) y el stage es el contenedor redondeado con márgenes. */
+  .shell { background: var(--card); padding: 12px 12px 12px 0; }
+  .rail { --ava-ring: var(--card); }
+  .rail { top: 12px; height: calc(100vh - 24px); }
+  .stage { background: var(--bg); border-radius: var(--r-card); }
+  /* Chrome mobile fuera de desktop. */
+  .mhead, .tabbar, .tabbar[hidden] { display: none; }
+}
+
+/* Breakpoint medium (600–959, M3): tablet, plegable abierto, teléfono apaisado.
+   Rail compacto de 96px (sólo íconos + etiqueta chica, con el FAB adentro: el JS
+   le pone .rail--collapsed) en vez de la barra inferior estirada. El header por
+   vista sigue (sin avatar: ya está en el rail). */
+@media (min-width: 600px) and (max-width: 959px) {
+  .rail { display: flex; width: 96px; background: var(--bg); }
+  .rail__toggle { display: none; }
+  .tabbar, .tabguard, .fab, .mhead__ava { display: none !important; }
+  .stage { padding: 0 24px 32px; }
+}

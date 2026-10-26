@@ -1,0 +1,401 @@
+{
+ "nota": "Ticket de Carrefour (A CONSUMIDOR FINAL, 25/10/2026) en tres fotos que se pisan, pasado a mano en gastos-app (test/fixtures/ticket-carrefour-3-fotos.json, hasta el commit 478996f). Esto es lo que tendría que contestar Claude: cada producto una vez, con sus descuentos sumados, y lo repetido en el borde y el bloque DESCUENTOS en descartados. Ninguna foto llega al TOTAL: la de abajo termina en el AHORRO. Lo pagado: SUBTOTAL SIN DESCUENTOS $232.824,25 − AHORRO $24.560,75 = $208.263,50, 19 productos.",
+ "pagado": 208263.5,
+ "respuesta": {
+  "lugar": {
+   "cadena": "Carrefour",
+   "sucursal": null,
+   "direccion": null,
+   "cuit": null
+  },
+  "fecha": "2026-10-25",
+  "total": null,
+  "subtotal": 232824.25,
+  "ahorro": 24560.75,
+  "renglones": [
+   {
+    "foto": 1,
+    "texto": "FIDEOS S TACC TIRABUZON MATARAZZO X 500",
+    "cantidad": 6,
+    "unidad": "u",
+    "precio_unitario": 4999,
+    "importe": 29994,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Matarazzo",
+    "nombre": "Fideos tirabuzón sin TACC",
+    "medida_cantidad": 500,
+    "medida_unidad": "g"
+   },
+   {
+    "foto": 1,
+    "texto": "CAFE INSTANTANEO EXPRESSO GOLD NESCAFE D",
+    "cantidad": 2,
+    "unidad": "u",
+    "precio_unitario": 22479,
+    "importe": 44958,
+    "descuento": 11239.5,
+    "ean": null,
+    "marca": "Nescafé",
+    "nombre": "Café instantáneo expresso gold",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "TOSTADAS S TACC ARROZ CLASIC CARREFOUR X",
+    "cantidad": 6,
+    "unidad": "u",
+    "precio_unitario": 2190,
+    "importe": 13140,
+    "descuento": 1314,
+    "ean": null,
+    "marca": "Carrefour",
+    "nombre": "Tostadas de arroz sin TACC",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "SNACK CHOCOLATE Y CASTANAS CAJU BRIA FRE",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 6250,
+    "importe": 6250,
+    "descuento": 625,
+    "ean": null,
+    "marca": "Bria",
+    "nombre": "Snack de chocolate y castañas de cajú",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "EDULCORANTE LIQUIDO C SUCRALOSA HILERET",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 5830,
+    "importe": 5830,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Hileret",
+    "nombre": "Edulcorante líquido con sucralosa",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "GALLETITAS CUB CHOC LECH CARREFOUR EXTRA",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 3500,
+    "importe": 3500,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Carrefour",
+    "nombre": "Galletitas cubiertas de chocolate con leche",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "BOMBONES FERRERO ROCHER X 4 UNI",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 5369,
+    "importe": 5369,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Ferrero Rocher",
+    "nombre": "Bombones",
+    "medida_cantidad": 4,
+    "medida_unidad": "u"
+   },
+   {
+    "foto": 1,
+    "texto": "TE EN HEBRAS BLUE EARL GREY INTI ZEN X 1",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 6900,
+    "importe": 6900,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Inti Zen",
+    "nombre": "Té en hebras Blue Earl Grey",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "TISANA EN HEBRAS BE BERRIES INTI ZEN X 1",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 6900,
+    "importe": 6900,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Inti Zen",
+    "nombre": "Tisana en hebras Be Berries",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "QUESO REGGIANITO HORMA SANTA ROSA X KG",
+    "cantidad": 0.305,
+    "unidad": "kg",
+    "precio_unitario": 46435,
+    "importe": 14162.68,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Santa Rosa",
+    "nombre": "Queso reggianito en horma",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 1,
+    "texto": "QUESO REGGIANITO HORMA SANTA ROSA X KG",
+    "cantidad": 0.37,
+    "unidad": "kg",
+    "precio_unitario": 46435,
+    "importe": 17180.95,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Santa Rosa",
+    "nombre": "Queso reggianito en horma",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 2,
+    "texto": "QUESO REGGIANITO HORMA SANTA ROSA X KG",
+    "cantidad": 0.265,
+    "unidad": "kg",
+    "precio_unitario": 46435,
+    "importe": 12305.28,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Santa Rosa",
+    "nombre": "Queso reggianito en horma",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 2,
+    "texto": "BANANA SELECCI N X KG",
+    "cantidad": 0.66,
+    "unidad": "kg",
+    "precio_unitario": 2299,
+    "importe": 1517.34,
+    "descuento": 0,
+    "ean": null,
+    "marca": null,
+    "nombre": "Banana",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 2,
+    "texto": "PULVERIZADOR DESES PLAST TRANSPARENTE 1",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 4590,
+    "importe": 4590,
+    "descuento": 0,
+    "ean": null,
+    "marca": null,
+    "nombre": "Pulverizador de plástico",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 2,
+    "texto": "PAPEL HIGIENICO D HOJA PLUS HIGIENOL 4 X",
+    "cantidad": 4,
+    "unidad": "u",
+    "precio_unitario": 4550,
+    "importe": 18200,
+    "descuento": 6370,
+    "ean": null,
+    "marca": "Higienol",
+    "nombre": "Papel higiénico doble hoja",
+    "medida_cantidad": 4,
+    "medida_unidad": "u"
+   },
+   {
+    "foto": 2,
+    "texto": "SUAVIZANTE CONC BRISA INTENSO DOWNY BOT",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 17249,
+    "importe": 17249,
+    "descuento": 4312.25,
+    "ean": null,
+    "marca": "Downy",
+    "nombre": "Suavizante concentrado brisa intenso",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   },
+   {
+    "foto": 2,
+    "texto": "ALGODON HIDROFILO PREMIUM ESTRELLA X 75",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 2199,
+    "importe": 2199,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Estrella",
+    "nombre": "Algodón hidrófilo premium",
+    "medida_cantidad": 75,
+    "medida_unidad": "g"
+   },
+   {
+    "foto": 2,
+    "texto": "ALCOHOL ETILICO CARREFOUR SOFT X 1 LT",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 6590,
+    "importe": 6590,
+    "descuento": 700,
+    "ean": null,
+    "marca": "Carrefour",
+    "nombre": "Alcohol etílico soft",
+    "medida_cantidad": 1,
+    "medida_unidad": "l"
+   },
+   {
+    "foto": 2,
+    "texto": "MASCARILLA CAPILAR COLAGENO LIFTER ELVIV",
+    "cantidad": 1,
+    "unidad": "u",
+    "precio_unitario": 15989,
+    "importe": 15989,
+    "descuento": 0,
+    "ean": null,
+    "marca": "Elvive",
+    "nombre": "Mascarilla capilar colágeno lifter",
+    "medida_cantidad": null,
+    "medida_unidad": null
+   }
+  ],
+  "descartados": [
+   {
+    "foto": 2,
+    "texto": "1 x 6900,00",
+    "importe": 6900,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 2,
+    "texto": "QUESO REGGIANITO HORMA SANTA ROSA X KG",
+    "importe": 14162.68,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 2,
+    "texto": "QUESO REGGIANITO HORMA SANTA ROSA X KG",
+    "importe": 17180.95,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "1 x 0.660 x 2299.00",
+    "importe": 1517.34,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "PULVERIZADOR DESES PLAST TRANSPARENTE 1",
+    "importe": 4590,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "PAPEL HIGIENICO D HOJA PLUS HIGIENOL 4 X",
+    "importe": 18200,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "2do70%-HIGIEN-HIGI",
+    "importe": -6370,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "SUAVIZANTE CONC BRISA INTENSO DOWNY BOT",
+    "importe": 17249,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "25%dto-DOWNY-SUAVI",
+    "importe": -4312.25,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "ALGODON HIDROFILO PREMIUM ESTRELLA X 75",
+    "importe": 2199,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "ALCOHOL ETILICO CARREFOUR SOFT X 1 LT",
+    "importe": 6590,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "MC ALCOHOL ET-CARR",
+    "importe": -700,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "MASCARILLA CAPILAR COLAGENO LIFTER ELVIV",
+    "importe": 15989,
+    "motivo": "repetido"
+   },
+   {
+    "foto": 3,
+    "texto": "2do50%-NESCAF-INFUSIONES",
+    "importe": -11239.5,
+    "motivo": "informativo"
+   },
+   {
+    "foto": 3,
+    "texto": "MC TOSTADAS S TACC ARROZ C",
+    "importe": -1314,
+    "motivo": "informativo"
+   },
+   {
+    "foto": 3,
+    "texto": "MC SNACK CHOCOLATE Y C",
+    "importe": -625,
+    "motivo": "informativo"
+   },
+   {
+    "foto": 3,
+    "texto": "2do70%-HIGIEN-HIGIENE",
+    "importe": -6370,
+    "motivo": "informativo"
+   },
+   {
+    "foto": 3,
+    "texto": "25%dto-DOWNY-SUAVIZANTE",
+    "importe": -4312.25,
+    "motivo": "informativo"
+   },
+   {
+    "foto": 3,
+    "texto": "MC ALCOHOL ET-CARREF-5890",
+    "importe": -700,
+    "motivo": "informativo"
+   }
+  ],
+  "avisos": []
+ }
+}

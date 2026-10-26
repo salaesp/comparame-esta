@@ -1,0 +1,31 @@
+# Cloudflare Workers + static assets, como Gastienzos. Sin build step: worker/index.js
+# rutea /api/* hacia los handlers de api/ y `public/` se sirve como assets estáticos.
+name = "comparame-esta"
+main = "worker/index.js"
+
+# nodejs_compat: node:crypto y el poblado de process.env desde los secrets del Worker.
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Que el deploy no borre las vars cargadas a mano en el panel (MAX_USERS, LECTOR_MODELO…).
+keep_vars = true
+
+# El Worker corre primero sólo para la API; el resto lo sirven los assets directo.
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+# Base D1. El id sale de `npx wrangler d1 create comparame-db` (ver docs/setup.md).
+# El schema se aplica solo en el primer request (lib/db.mjs).
+[[d1_databases]]
+binding = "DB"
+database_name = "comparame-db"
+database_id = "REEMPLAZAR-CON-EL-ID-DE-wrangler-d1-create"
+
+# Corre el Worker cerca de D1 y no cerca del usuario (una vuelta larga en vez de varias).
+[placement]
+mode = "smart"
+
+[observability]
+enabled = true
