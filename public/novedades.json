@@ -1,0 +1,12 @@
+[
+  {
+    "version": "next:minor",
+    "fecha": "",
+    "notas": [
+      "Primera versión: sacale fotos a un ticket (aunque sea largo, en varias fotos) y la app lee cada producto con su precio.",
+      "Revisás lo leído antes de guardarlo: si la suma no da el total del ticket, te avisa.",
+      "Buscá un producto y mirá en qué lugar está más barato, con tus precios y los de tus amigos.",
+      "Invitá a tus amigos con un link para compartir precios."
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Si el commit toca public/, tiene que traer su novedad pendiente en novedades.json
+# (ver scripts/bump-ui-version.mjs). Se activa con `npm run hooks` (o `npm install`).
+if ! command -v node >/dev/null 2>&1; then
+  echo "[pre-commit] node no está en el PATH: no se pudo revisar la novedad" >&2
+  exit 0
+fi
+exec node "$(git rev-parse --show-toplevel)/scripts/bump-ui-version.mjs" --staged

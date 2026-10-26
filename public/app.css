@@ -1,0 +1,112 @@
+/* ============================================================================
+   Comparame esta — los componentes propios, sobre la capa genérica del sistema
+   "Suave" (styles.css, copiada de Gastienzos). Mismas reglas: todo por token, sin
+   font-size en px, lo elegido nunca en lima lleno (el lima lleno es de las acciones).
+   ============================================================================ */
+
+.view { display: flex; flex-direction: column; gap: 14px; }
+.view[hidden] { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tcard__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+
+/* Chips propios: el más barato (tonal, no lima lleno), una duda y un error. */
+.chip--best { color: var(--accent-ink); background: var(--accent-soft); font-weight: 600; }
+.chip--warn { color: var(--yellow); background: color-mix(in srgb, var(--yellow) 14%, transparent); }
+.chip--neg { color: var(--neg-ink); background: var(--neg-soft); }
+/* Quién cargó el precio: su cara chiquita adelante del nombre. */
+.chip--who { padding-left: 3px; }
+.pava--chip { width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center;
+  font-size: var(--t-label-s); font-weight: 700; }
+
+/* La medida del envase al lado del nombre ("500 g"), en gris. */
+.prod__medida { color: var(--muted); font-weight: 500; }
+/* Un precio de hace más de 30 días: no compara, se ve apagado. */
+.mrow--old .mrow__title, .mrow--old .mrow__amt, .amt-old { color: var(--muted); }
+.mrow--old .mrow__ic { opacity: .6; }
+/* Un renglón que no cierra (importe > cantidad × precio): borde coral. */
+.mrow--warn { box-shadow: inset 3px 0 0 var(--neg); }
+.mrow:disabled { cursor: default; }
+.mrow:disabled:hover { background: none; }
+
+/* El buscador: una píldora con la lupa (en Inicio es un botón que lleva a Productos). */
+.buscador { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 var(--sp-4);
+  border-radius: var(--r-full); background: var(--card); color: var(--muted); border: none; font: inherit; width: 100%; text-align: left; }
+.buscador--btn { cursor: pointer; font-size: var(--t-body-l); }
+.buscador input { flex: 1; min-width: 0; border: none; background: transparent; color: var(--text); font: inherit;
+  font-size: var(--t-body-l); outline: none; }
+.buscador input::placeholder { color: var(--faint); }
+.buscador:focus-within { box-shadow: 0 0 0 2px var(--accent-ink); }
+.buscador--in { background: var(--card-deep); min-height: 44px; margin-top: var(--sp-3); }
+
+/* La ficha de un producto o un ticket: el número grande arriba. */
+.prodhero { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-4); margin: var(--sp-2) 0;
+  border-radius: var(--r-group); background: var(--card-deep); }
+.prodhero__amt { font-size: var(--t-display-m); font-weight: 800; letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
+.prodhero__sub { color: var(--muted); font-size: var(--t-body-m); }
+.prodfoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: var(--sp-4); }
+.set__btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Lo plegado (todos los precios, los renglones repetidos): un <details>. */
+.hist { margin-top: var(--sp-3); }
+.hist > summary { cursor: pointer; color: var(--muted); font-size: var(--t-body-m); font-weight: 600; padding: 10px 0; list-style-position: inside; }
+.hist__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--outline); font-size: var(--t-body-m); }
+.hist__row:last-child { border-bottom: none; }
+.hist__row > span { min-width: 0; color: var(--muted); }
+.hist__row b { font-variant-numeric: tabular-nums; }
+
+/* Las fotos del ticket: miniaturas numeradas en orden, con su ✕, y los botones para sumar. */
+.fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; margin-bottom: 96px; }
+.fotos__item { position: relative; margin: 0; aspect-ratio: 3 / 4; border-radius: var(--r-m); overflow: hidden; background: var(--card-deep); }
+.fotos__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fotos__item figcaption { position: absolute; left: 8px; bottom: 8px; min-width: 24px; height: 24px; border-radius: var(--r-full);
+  display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: var(--t-label); }
+.fotos__x { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border: none; border-radius: 50%;
+  display: grid; place-items: center; background: var(--scrim-strong); color: var(--toast-text); cursor: pointer; }
+.fotos__add { aspect-ratio: 3 / 4; border: 2px dashed var(--outline); border-radius: var(--r-m); background: none; color: var(--accent-ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+.fotos__add--ghost { color: var(--muted); }
+.fotos__add:hover { background: var(--card-deep); }
+
+/* Leyendo: el spinner que muta, al medio. */
+.leyendo { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 64px 16px; text-align: center; }
+.leyendo__t { margin: 0; font-size: var(--t-title-l); font-weight: 700; }
+
+/* El control contra el total del ticket: lima si da, coral si no, gris si no hay total. */
+.control { display: flex; align-items: flex-start; gap: 10px; padding: 12px var(--sp-4); margin: var(--sp-3) 0;
+  border-radius: var(--r-group); background: var(--card-deep); color: var(--muted); font-size: var(--t-body-m); line-height: 1.4; }
+.control svg { flex-shrink: 0; }
+.control b { color: var(--text); }
+.control--ok { background: var(--accent-soft); color: var(--accent-ink); }
+.control--ok b { color: var(--accent-ink); }
+.control--no { background: var(--neg-soft); color: var(--neg-ink); }
+.control--no b { color: var(--neg-ink); }
+/* Lo que Claude avisa ("la foto 2 está borrosa"). */
+.avisos { margin: 0 0 var(--sp-3); padding-left: 20px; color: var(--muted); font-size: var(--t-body-m); }
+
+/* La fecha del ticket como una fila más, con el input del sistema a la derecha. */
+.revfecha { cursor: default; }
+.revfecha input { border: none; background: var(--card-deep); color: var(--text); font: inherit; border-radius: var(--r-s); padding: 8px 10px; }
+
+/* Campos en fila (cantidad · importe · descuento) y la medida con su unidad. */
+.accf__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.accf__hint--err { color: var(--neg-ink); }
+.medida { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* El pie del formulario de la revisión deja lugar al botón fijo. */
+#modal-panel .gcard + .mvf__foot, #modal-panel .hist + .mvf__foot { margin-top: var(--sp-4); }
+
+/* Ajustes en una sola columna (sin menú de secciones). */
+.setwrap--simple { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.setwrap--simple .setcard { display: block; }
+
+/* El rail de la compu usa el mismo par de íconos que la barra: trazo apagado, relleno el activo. */
+.rail__btn .ic--fill, .rail__btn.active .ic--line { display: none; }
+.rail__btn.active .ic--fill { display: block; }
+
+/* El <details> lleva su chevron, que gira al abrirse. */
+.hist > summary { list-style: none; display: flex; align-items: center; gap: 6px; }
+.hist > summary::-webkit-details-marker { display: none; }
+.hist > summary::before { content: '›'; display: inline-block; width: 1em; text-align: center; font-size: var(--t-title-l);
+  transition: transform var(--dur-s) var(--spring); }
+.hist[open] > summary::before { transform: rotate(90deg); }

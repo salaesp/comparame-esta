@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <title>Comparame esta</title>
+    <meta name="description" content="Sacale fotos a tus tickets y mirá dónde está más barato cada producto, con los precios de tus amigos." />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/icons/logo.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#F2F0EB" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#100F0E" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Comparame" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- El tema elegido en Ajustes se aplica antes de pintar (sin él, sigue al sistema). -->
+    <script>
+      try {
+        var t = localStorage.getItem('cmp:theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) { /* sin localStorage */ }
+    </script>
+    <link rel="stylesheet" href="/styles.css?v=0.0.0" />
+    <link rel="stylesheet" href="/app.css?v=0.0.0" />
+    <script src="/app.js?v=0.0.0" type="module" defer></script>
+  </head>
+  <body>
+    <!-- Formas Expressive (galleta de 9, trébol de 4) para badges e iniciales: clip-path: url(#shape-…) -->
+    <!-- Formas Expressive (galleta de 9, trébol de 4) para badges e iniciales: clip-path: url(#shape-…) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="shape-cookie" clipPathUnits="objectBoundingBox"><path d="M1.0000 0.5000L0.9905 0.5322L0.9651 0.5612L0.9318 0.5859L0.9005 0.6073L0.8797 0.6289L0.8731 0.6545L0.8787 0.6867L0.8897 0.7250L0.8973 0.7654L0.8937 0.8021L0.8752 0.8290L0.8432 0.8432L0.8031 0.8457L0.7623 0.8418L0.7269 0.8396L0.7000 0.8464L0.6806 0.8663L0.6649 0.8981L0.6478 0.9354L0.6256 0.9688L0.5974 0.9895L0.5648 0.9919L0.5312 0.9768L0.5000 0.9500L0.4724 0.9213L0.4473 0.9004L0.4218 0.8933L0.3927 0.9005L0.3585 0.9169L0.3205 0.9334L0.2826 0.9409L0.2500 0.9330L0.2269 0.9087L0.2144 0.8722L0.2097 0.8310L0.2068 0.7932L0.1985 0.7644L0.1796 0.7458L0.1489 0.7346L0.1103 0.7250L0.0715 0.7113L0.0416 0.6899L0.0274 0.6604L0.0312 0.6256L0.0491 0.5897L0.0728 0.5562L0.0924 0.5267L0.1000 0.5000L0.0924 0.4733L0.0728 0.4438L0.0491 0.4103L0.0312 0.3744L0.0274 0.3396L0.0416 0.3101L0.0715 0.2887L0.1103 0.2750L0.1489 0.2654L0.1796 0.2542L0.1985 0.2356L0.2068 0.2068L0.2097 0.1690L0.2144 0.1278L0.2269 0.0913L0.2500 0.0670L0.2826 0.0591L0.3205 0.0666L0.3585 0.0831L0.3927 0.0995L0.4218 0.1067L0.4473 0.0996L0.4724 0.0787L0.5000 0.0500L0.5312 0.0232L0.5648 0.0081L0.5974 0.0105L0.6256 0.0312L0.6478 0.0646L0.6649 0.1019L0.6806 0.1337L0.7000 0.1536L0.7269 0.1604L0.7623 0.1582L0.8031 0.1543L0.8432 0.1568L0.8752 0.1710L0.8937 0.1979L0.8973 0.2346L0.8897 0.2750L0.8787 0.3133L0.8731 0.3455L0.8797 0.3711L0.9005 0.3927L0.9318 0.4141L0.9651 0.4388L0.9905 0.4678Z"/></clipPath>
+        <clipPath id="shape-clover" clipPathUnits="objectBoundingBox"><path d="M1.0000 0.5000L0.9955 0.5325L0.9824 0.5635L0.9617 0.5918L0.9347 0.6165L0.9033 0.6369L0.8696 0.6531L0.8355 0.6655L0.8031 0.6750L0.7738 0.6829L0.7486 0.6908L0.7281 0.7001L0.7121 0.7121L0.7001 0.7281L0.6908 0.7486L0.6829 0.7738L0.6750 0.8031L0.6655 0.8355L0.6531 0.8696L0.6369 0.9033L0.6165 0.9347L0.5918 0.9617L0.5635 0.9824L0.5325 0.9955L0.5000 1.0000L0.4675 0.9955L0.4365 0.9824L0.4082 0.9617L0.3835 0.9347L0.3631 0.9033L0.3469 0.8696L0.3345 0.8355L0.3250 0.8031L0.3171 0.7738L0.3092 0.7486L0.2999 0.7281L0.2879 0.7121L0.2719 0.7001L0.2514 0.6908L0.2262 0.6829L0.1969 0.6750L0.1645 0.6655L0.1304 0.6531L0.0967 0.6369L0.0653 0.6165L0.0383 0.5918L0.0176 0.5635L0.0045 0.5325L0.0000 0.5000L0.0045 0.4675L0.0176 0.4365L0.0383 0.4082L0.0653 0.3835L0.0967 0.3631L0.1304 0.3469L0.1645 0.3345L0.1969 0.3250L0.2262 0.3171L0.2514 0.3092L0.2719 0.2999L0.2879 0.2879L0.2999 0.2719L0.3092 0.2514L0.3171 0.2262L0.3250 0.1969L0.3345 0.1645L0.3469 0.1304L0.3631 0.0967L0.3835 0.0653L0.4082 0.0383L0.4365 0.0176L0.4675 0.0045L0.5000 0.0000L0.5325 0.0045L0.5635 0.0176L0.5918 0.0383L0.6165 0.0653L0.6369 0.0967L0.6531 0.1304L0.6655 0.1645L0.6750 0.1969L0.6829 0.2262L0.6908 0.2514L0.7001 0.2719L0.7121 0.2879L0.7281 0.2999L0.7486 0.3092L0.7738 0.3171L0.8031 0.3250L0.8355 0.3345L0.8696 0.3469L0.9033 0.3631L0.9347 0.3835L0.9617 0.4082L0.9824 0.4365L0.9955 0.4675Z"/></clipPath>
+      </defs>
+    <div class="login-gate" id="login-gate" hidden></div>
+    <div class="loadbar" id="loadbar" hidden aria-hidden="true"></div>
+    <div class="offbar" id="offbar" hidden role="status"><span>Sin conexión</span><button type="button" class="offbar__btn" id="offbar-retry">Reintentar</button></div>
+
+    <div class="shell" id="shell" hidden>
+      <aside class="rail" id="rail" aria-label="Navegación">
+        <div class="rail__top"><div class="rail__logo" aria-hidden="true"></div></div>
+        <button type="button" class="rail__fab" data-nuevo aria-label="Cargar un ticket"><span data-ic="camera"></span><span class="rail__fablbl">Cargar ticket</span></button>
+        <nav class="rail__nav" id="rail-nav"></nav>
+        <button type="button" class="avatar-btn rail__avatar" data-goto="ajustes" aria-label="Ajustes"></button>
+      </aside>
+      <main class="stage" id="stage">
+        <div class="mhead" id="mhead">
+          <div class="mhead__title"><span class="mhead__txt" id="mhead-title">Comparame esta</span></div>
+          <div class="mhead__acts">
+            <button type="button" class="mhead__search" data-buscar aria-label="Buscar un producto"><span data-ic="search"></span></button>
+            <button type="button" class="avatar-btn mhead__ava" data-goto="ajustes" aria-label="Ajustes"></button>
+          </div>
+        </div>
+        <div class="topbar"><div class="topbar__row"><h1 class="topbar__title" id="topbar-title">Inicio</h1></div></div>
+        <section class="view" id="view-inicio" hidden></section>
+        <section class="view" id="view-productos" hidden></section>
+        <section class="view" id="view-lugares" hidden></section>
+        <section class="view" id="view-ajustes" hidden></section>
+      </main>
+    </div>
+    <div class="tabguard" id="tabguard" hidden></div>
+    <nav class="tabbar" id="tabbar" aria-label="Pantallas" hidden></nav>
+    <button type="button" class="fab" id="fab" data-nuevo aria-label="Cargar un ticket" hidden><span data-ic="camera"></span></button>
+
+    <div class="modal" id="modal" hidden>
+      <div class="modal__scrim" data-close></div>
+      <section class="modal__panel" id="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section>
+    </div>
+    <!-- Las fotos del ticket: la cámara (capture) y la galería (varias). -->
+    <input type="file" id="foto-cam" accept="image/*" capture="environment" hidden />
+    <input type="file" id="foto-gal" accept="image/*" multiple hidden />
+  </body>
+</html>

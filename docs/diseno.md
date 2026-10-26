@@ -1,7 +1,7 @@
 # Comparame esta: diseño de la primera versión
 
-> Estado: **borrador para revisar**. Todavía no hay código. Lo marcado con **❓** está
-> sin decidir y espera una respuesta antes de escribirse.
+> Estado: **etapa 1 hecha** (falta elegir el modelo midiendo con fotos reales). Las
+> decisiones que estaban abiertas están al final, en "Decidido".
 
 ## El pedido
 
@@ -207,3 +207,25 @@ bien?
 5. Topes de lectura por persona y presupuesto por mes.
 6. Fotos para medir los modelos, y si pasa por AI Gateway.
 7. Precios viejos: ¿30 días?
+
+## Decidido (26/10/2026)
+
+1. **Dominio:** arranca en `*.workers.dev`.
+2. **Quién entra:** cualquiera con Google, con un tope de 50 personas (`MAX_USERS`), como en Gastienzos.
+3. **El EAN:** las dos cosas: leerlo del ticket cuando aparece (hecho) y escanearlo con la cámara
+   desde el producto (etapa 2).
+4. **Catálogo:** productos, lugares y alias son de todos; los precios, sólo de quien los cargó y sus
+   amigos.
+5. **Topes:** sin límite por ahora. Cada lectura queda anotada en `lecturas` con sus tokens y su costo.
+6. **Modelo:** se miden los tres (`scripts/medir-modelos.mjs`) con fotos reales antes de elegir.
+   Mientras tanto la app usa Opus 5.5 (`LECTOR_MODELO`). AI Gateway: queda opcional
+   (`ANTHROPIC_BASE_URL_LECTOR`).
+7. **Precios viejos:** en "¿dónde está más barato?" entran los de los últimos 30 días; los más viejos
+   se ven grises.
+
+Además, en lo que no estaba dicho:
+
+- La app vive en "/" (no hay página de inicio aparte, como `/app` en Gastienzos).
+- Un producto lo corrige quien lo creó o quien tiene algún precio cargado de él.
+- Si en la revisión se confirma un producto de otro lugar, el alias de esa cadena apunta a él: lo
+  último que se confirmó gana.
