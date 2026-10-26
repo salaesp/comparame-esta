@@ -111,6 +111,11 @@
   transition: transform var(--dur-s) var(--spring); }
 .hist[open] > summary::before { transform: rotate(90deg); }
 
+/* "Mandar a Gastienzos": un link con la forma del botón tonal, debajo del total del ticket. */
+.gzbtn { align-self: flex-start; margin-top: var(--sp-3); text-decoration: none; }
+/* Dentro del recuadro del total (card-deep) va un escalón más claro, si no se pierde. */
+.prodhero .gzbtn { background: var(--card); }
+
 /* Un chip largo (la dirección de un lugar) se corta con "…" en vez de salirse de la fila. */
 .row__meta .movchips { min-width: 0; overflow: hidden; }
 .row__meta .chip { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; }

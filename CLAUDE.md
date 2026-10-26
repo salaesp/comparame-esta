@@ -28,6 +28,11 @@ Toda la UI y los textos van en castellano rioplatense.
   ficha de un producto ("¿Dónde está más barato?": el último precio de cada lugar, del más barato al
   más caro; los de más de `FRESCO_DIAS` (30) días, grises), Lugares y la ficha de un ticket. Se
   compara por **kg, litro o unidad de la medida** (`precio_medida`) cuando se sabe; si no, por unidad.
+- **Mandar a Gastienzos**: en la ficha de un ticket propio (`gzBotonHtml`) y como acción del toast al
+  guardarlo, un link a `https://gastienzos.com.ar/app?add=1&monto=&titulo=&fecha=` (`gastienzosUrl`:
+  lo pagado, la cadena, la fecha) que abre el alta de Gastienzos completada (allá lo lee
+  `parseLaunchPrefill`); se elige cómo se pagó y se guarda allá. Las cuentas no se conectan. El
+  teléfono recuerda cuáles mandaste (`localStorage['cmp:gastienzos']`). Tests en `test/gastienzos.test.mjs`.
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 

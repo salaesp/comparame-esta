@@ -193,8 +193,8 @@ bien?
 2. **Juntar mejor:** las sugerencias de "¿Es la misma?", juntar y separar desde la ficha,
    escanear el EAN, el historial con gráfico, Lugares.
 3. **Después:** una **lista de compras** que te dice en qué lugar te sale más barata entera y
-   cuánto ahorrás; **mandar el ticket a Gastienzos** como gasto (por la API con una key o el
-   MCP; lo dejaste en "puede ser").
+   cuánto ahorrás. **Mandar el ticket a Gastienzos** ya está (0.2.0): un link que abre su alta con
+   el monto, el lugar y la fecha.
 
 **Fuera de alcance:** cargar un precio sin ticket (a mano o con la foto de la góndola).
 

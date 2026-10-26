@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.2.0",
+    "fecha": "2026-10-26",
+    "notas": [
+      "Mandá un ticket a Gastienzos: en el ticket (o al guardarlo) tocá «Mandar a Gastienzos» y se abre el alta con el monto, el lugar y la fecha ya puestos."
+    ]
+  },
+  {
     "version": "0.1.0",
     "fecha": "2026-10-26",
     "notas": [

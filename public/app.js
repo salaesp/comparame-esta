@@ -89,6 +89,7 @@ const IC = {
   up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  out: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   google: '',
 };
 function ic(name, size = 24) {
@@ -758,7 +759,8 @@ async function openTicket(id) {
     const mio = t.user_id === state.user.id;
     return `${modalHead(lugarNombre(l), `${quien(t.user_id)} · ${fmtFecha(t.fecha)}`)}
       <div class="prodhero"><span class="lbl">Se pagó</span><span class="prodhero__amt">${fmtMoney(t.pagado)}</span>
-        <span class="prodhero__sub">${t.n_renglones} productos${t.total && Math.abs(t.total - t.pagado) > 1 ? ` · el ticket dice ${fmtMoney(t.total)}` : ''}</span></div>
+        <span class="prodhero__sub">${t.n_renglones} productos${t.total && Math.abs(t.total - t.pagado) > 1 ? ` · el ticket dice ${fmtMoney(t.total)}` : ''}</span>
+        ${mio ? gzBotonHtml(t) : ''}</div>
       <div class="gcard">${renglones.map((pr) => {
         const p = state.productos.get(pr.producto_id);
         return `<button type="button" class="mrow txrow" ${p ? `data-producto="${esc(p.id)}"` : 'disabled'}>
@@ -788,6 +790,31 @@ async function deleteTicket(id) {
     await reload();
     toast('✓ Ticket borrado');
   } catch (e) { if (e.status !== 401) toast(e.message, { icon: 'error' }); }
+}
+
+// ---------- Mandar a Gastienzos ----------
+// Un ticket tuyo se puede mandar a Gastienzos como gasto: el link abre su alta con el monto
+// (lo pagado), el título (la cadena: Gastienzos le pone la categoría de su historial) y la
+// fecha ya puestos (?add=1&monto=&titulo=&fecha=, parseLaunchPrefill en gastos-app). Allá se
+// elige cómo se pagó y se guarda; las cuentas no se conectan. Este teléfono recuerda cuáles
+// mandaste (cmp:gastienzos), para decir "Ya lo mandaste".
+const GASTIENZOS_URL = 'https://gastienzos.com.ar';
+const GZ_KEY = 'cmp:gastienzos';
+function gastienzosUrl(t, lugar) {
+  const p = new URLSearchParams({ add: '1', monto: String(t.pagado) });
+  if (lugar?.cadena) p.set('titulo', lugar.cadena);
+  if (t.fecha) p.set('fecha', t.fecha);
+  return `${GASTIENZOS_URL}/app?${p}`;
+}
+function gzMandados() {
+  try { return JSON.parse(localStorage.getItem(GZ_KEY) || '[]'); } catch { return []; }
+}
+function gzMarcar(id) {
+  try { localStorage.setItem(GZ_KEY, JSON.stringify([...gzMandados().filter((x) => x !== id), id].slice(-500))); } catch { /* sin storage */ }
+}
+function gzBotonHtml(t) {
+  const ya = gzMandados().includes(t.id);
+  return `<a class="set__btn gzbtn" href="${esc(gastienzosUrl(t, lugarDe(t.lugar_id)))}" target="_blank" rel="noopener" data-gz="${esc(t.id)}">${ic('out', 18)} ${ya ? 'Ya lo mandaste · Mandar de nuevo' : 'Mandar a Gastienzos'}</a>`;
 }
 
 // ---------- Cargar un ticket: las fotos ----------
@@ -1126,13 +1153,17 @@ async function guardarRevision(btn) {
   };
   btn.classList.add('mvf__submit--busy'); btn.disabled = true;
   try {
-    await apiFetch('/api/tickets', { method: 'POST', body });
+    const { id } = await apiFetch('/api/tickets', { method: 'POST', body });
     rev = null;
     closeLayer();
     await reload();
     showView('inicio');
     navigator.vibrate?.(30);
-    toast(`${body.renglones.length} productos de ${body.lugar.cadena || lugarNombre(lugarDe(body.lugar.id))}`, { lead: 'Ticket guardado', icon: 'ok' });
+    const t = state.tickets.find((x) => x.id === id);
+    toast(`${body.renglones.length} productos de ${body.lugar.cadena || lugarNombre(lugarDe(body.lugar.id))}`, {
+      lead: 'Ticket guardado', icon: 'ok',
+      ...(t ? { action: 'Mandar a Gastienzos', onAction: () => { gzMarcar(t.id); window.open(gastienzosUrl(t, lugarDe(t.lugar_id)), '_blank', 'noopener'); } } : {}),
+    });
   } catch (e) {
     btn.classList.remove('mvf__submit--busy'); btn.disabled = false;
     if (e.status !== 401) toast(e.message, { icon: 'error' });
@@ -1253,6 +1284,9 @@ document.addEventListener('click', (e) => {
   if (tk) { openTicket(tk.dataset.ticket); return; }
   const lg = t.closest('[data-lugar]');
   if (lg) { openLugar(lg.dataset.lugar); return; }
+  // El link a Gastienzos se abre solo (es un <a>); acá sólo se anota que se mandó.
+  const gz = t.closest('[data-gz]');
+  if (gz) { gzMarcar(gz.dataset.gz); setTimeout(repaintModal, 300); return; }
   const td = t.closest('[data-ticket-del]');
   if (td) { deleteTicket(td.dataset.ticketDel); return; }
   const pe = t.closest('[data-prod-edit]');
@@ -1340,7 +1374,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons,
+    controlHtml, emptyState, whoChip, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {
