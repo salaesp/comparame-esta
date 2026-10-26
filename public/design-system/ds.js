@@ -9,7 +9,7 @@ const dia = (n) => { const d = new Date(hoy); d.setDate(d.getDate() - n); return
 c.setData({
   user: { id: 'yo', name: 'Ana Pérez', email: 'ana@ejemplo.com', picture: '' },
   amigos: [{ id: 'juli', name: 'Juli Gómez', email: 'juli@ejemplo.com', picture: '' }],
-  lugares: [{ id: 'l1', cadena: 'Carrefour', sucursal: '', direccion: 'Av. Cabildo 2200', ciudad: 'CABA' }, { id: 'l2', cadena: 'Coto', sucursal: 'Cabildo', direccion: 'Av. Cabildo 545', ciudad: 'CABA' },
+  lugares: [{ id: 'l1', cadena: 'Carrefour', sucursal: '', direccion: 'Av. Cabildo 2200', ciudad: 'CABA', lat: -34.561085, lon: -58.457507, geo_at: '2026-10-26' }, { id: 'l2', cadena: 'Coto', sucursal: 'Cabildo', direccion: 'Av. Cabildo 545', ciudad: 'CABA' },
     { id: 'l3', cadena: 'Carrefour', sucursal: '', direccion: '', ciudad: 'Rosario', punto_venta: '8188' }],
   productos: [{ id: 'p1', nombre: 'Fideos tirabuzón sin TACC', marca: 'Matarazzo', medida: 500, medida_unidad: 'g' }, { id: 'p2', nombre: 'Banana', marca: '', medida: null, medida_unidad: '' }],
   tickets: [{ id: 't1', user_id: 'yo', lugar_id: 'l1', fecha: dia(1), pagado: 208263.5, n_renglones: 19 }, { id: 't2', user_id: 'juli', lugar_id: 'l2', fecha: dia(3), pagado: 45300, n_renglones: 4 }, { id: 't3', user_id: 'yo', lugar_id: 'l3', fecha: dia(9), pagado: 12800, n_renglones: 3 }],

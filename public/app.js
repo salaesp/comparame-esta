@@ -792,6 +792,8 @@ function lugaresHtml() {
     </button>`;
   }).join('') || `<p class="note">No hay lugares en ${esc(ciudad)}.</p>`}</div>`;
 }
+// El punto del lugar en OpenStreetMap (lo busca el server con Georef, lib/geo.mjs).
+const mapaUrl = (l) => `https://www.openstreetmap.org/?mlat=${l.lat}&mlon=${l.lon}#map=17/${l.lat}/${l.lon}`;
 // Lo corrige quien lo creó o quien cargó un ticket ahí (como en api/lugares.mjs).
 const lugarEditable = (l) => !!l && (l.creado_por === state.user?.id || state.tickets.some((t) => t.lugar_id === l.id && t.user_id === state.user?.id));
 function openLugar(id) {
@@ -802,7 +804,9 @@ function openLugar(id) {
       const aca = resumenProductos().filter((r) => r.lugares.some((x) => x.lugar_id === id));
       const masBarato = aca.filter((r) => { const fr = r.lugares.filter((x) => x.fresco); return fr.length > 1 && fr[0].lugar_id === id; });
       return `${modalHead(lugarNombre(l), [lugarDonde(l), l?.cuit ? `CUIT ${l.cuit}` : ''].filter(Boolean).join(' · '))}
-      ${l?.direccion ? `<p class="lugardonde">${ic('pin', 18)}<span>${esc(lugarDonde(l))}${l.cuit ? ` · CUIT ${esc(l.cuit)}` : ''}</span></p>` : ''}
+      ${l?.direccion ? `<p class="lugardonde">${ic('pin', 18)}<span>${esc(lugarDonde(l))}${l.cuit ? ` · CUIT ${esc(l.cuit)}` : ''}</span></p>
+        ${l.lat != null ? `<a class="set__btn lugarmapa" href="${esc(mapaUrl(l))}" target="_blank" rel="noopener">${ic('out', 18)} Ver en el mapa</a>`
+          : l.geo_at ? `<p class="note">No encontré esta dirección en el mapa: revisá que esté bien escrita y que tenga la ciudad.</p>` : ''}` : ''}
       ${l && !l.direccion ? `<div class="control">${ic('pin', 20)}<span><b>Todavía no tiene dirección.</b> ${l.punto_venta ? `Lo reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : 'Sin ella, todas las sucursales de la cadena son una.'}
         ${lugarEditable(l) ? `<button type="button" class="set__btn control__btn" data-lugar-edit="${esc(id)}">Ponerle la dirección</button>` : ''}</span></div>` : ''}
       ${masBarato.length ? `<span class="setsub">Acá está más barato</span><div class="gcard">${masBarato.map(productoRowHtml).join('')}</div>` : ''}

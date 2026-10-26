@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.3.1",
+    "fecha": "2026-10-26",
+    "notas": [
+      "Cada lugar con dirección se ubica en el mapa: en su ficha, «Ver en el mapa». Si la dirección no aparece, la ficha te lo dice para que la corrijas.",
+      "Si el ticket trae la dirección pero no la ciudad, la app la completa sola."
+    ]
+  },
+  {
     "version": "0.3.0",
     "fecha": "2026-10-26",
     "notas": [

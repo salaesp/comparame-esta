@@ -28,13 +28,13 @@ export function match(segs, pathname) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     setDbEnv(env);
     const pathname = new URL(request.url).pathname.replace(/\/+$/, '') || '/';
     const route = ROUTES.find((r) => match(r.segs, pathname));
     if (route) {
       try {
-        return await route.fn(request, env);
+        return await route.fn(request, env, ctx);
       } catch (e) {
         console.error('[api]', pathname, e?.stack || e);
         return new Response(JSON.stringify({ ok: false, error: 'Algo falló. Probá de nuevo.' }), {

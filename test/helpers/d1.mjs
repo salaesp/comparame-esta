@@ -37,6 +37,8 @@ export async function baseNueva() {
   const db = await import('../../lib/db.mjs');
   db.setDbEnv({ DB: makeD1(sqlite) });
   db.resetSchemaCheck();
+  // Los tests nunca salen a Georef: por defecto no encuentra nada (test/geo.test.mjs pone otro).
+  (await import('../../lib/geo.mjs')).setGeoFetch(async () => new Response('{"direcciones":[]}'));
   await db.sql('select 1');
   return { sqlite, ...db };
 }
@@ -51,11 +53,15 @@ export async function usuario(sql, email, name = email.split('@')[0]) {
 
 // Un pedido al Worker entero, como lo haría la app.
 export async function pedir(worker, u, method, path, body) {
+  const espera = [];
+  const ctx = { waitUntil: (p) => espera.push(p) };
   const headers = { cookie: u?.cookie || '' };
   if (body !== undefined) headers['content-type'] = 'application/json';
   const res = await worker.fetch(new Request(`https://comparame.test${path}`, {
     method, headers, body: body === undefined ? undefined : JSON.stringify(body),
-  }), { ASSETS: { fetch: async () => new Response('asset') } });
+  }), { ASSETS: { fetch: async () => new Response('asset') } }, ctx);
+  // Lo que el handler dejó en segundo plano (ctx.waitUntil) termina antes de seguir.
+  await Promise.all(espera);
   const text = await res.text();
   let data = null;
   try { data = JSON.parse(text); } catch { data = text; }

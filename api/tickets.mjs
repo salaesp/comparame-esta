@@ -11,13 +11,14 @@ import { visibles } from '../lib/amigos.mjs';
 import { fotosError, leerTicket, lectorConfig, costoUsd } from '../lib/lector.mjs';
 import { validarTicket } from '../lib/ticket.mjs';
 import { cruzarLectura, guardarStmts } from '../lib/catalogo.mjs';
+import { ubicarLugares, enSegundoPlano } from '../lib/geo.mjs';
 
-export default async function (req) {
+export default async function (req, env, ctx) {
   const me = await sessionUser(req);
   if (!me) return error('no autenticado', 401);
   const [, , s2, s3] = segs(req);
   if (s2 === 'leer' && !s3 && req.method === 'POST') return leer(req, me.userId);
-  if (!s2 && req.method === 'POST') return guardar(req, me.userId);
+  if (!s2 && req.method === 'POST') return guardar(req, me.userId, ctx);
   if (s2 && !s3 && req.method === 'GET') return uno(me.userId, s2);
   if (s2 && !s3 && req.method === 'DELETE') return borrar(me.userId, s2);
   return error('método no permitido', 405);
@@ -68,12 +69,14 @@ async function leer(req, userId) {
   return json({ ok: true, lectura: await cruzarLectura(r.lectura), modelo: r.modelo, ms: r.ms });
 }
 
-async function guardar(req, userId) {
+async function guardar(req, userId, ctx) {
   const v = validarTicket(await readJson(req));
   if (v.error) return error(v.error, 422);
   const g = await guardarStmts(userId, v);
   if (g.error) return error(g.error, g.status, g.duplicado ? { duplicado: g.duplicado } : undefined);
   await txBatch(g.stmts);
+  // El punto en el mapa del lugar (si es nuevo o le cambió la dirección), sin hacer esperar.
+  await enSegundoPlano(ctx, ubicarLugares([g.lugarId]));
   return json({ ok: true, id: g.ticketId }, 201);
 }
 

@@ -37,6 +37,16 @@ Toda la UI y los textos van en castellano rioplatense.
   tickets, precios y claves a ése. Con lugares de más de una ciudad, Productos y Lugares se filtran
   por una (`ciudadesHtml`, `localStorage['cmp:ciudad']`; la ficha del producto pone las otras al
   pie). La ciudad se escribe de una forma (`ciudadLimpia`: "Capital Federal" es CABA).
+- **El punto en el mapa** (`lib/geo.mjs`): la dirección y la ciudad pasan por **Georef**
+  (apis.datos.gob.ar/georef, la API de direcciones del gobierno: gratis, sin key, sólo Argentina)
+  y se guardan `lat`/`lon` en el lugar. Mejor ningún punto que uno mal: sólo si Georef da una
+  dirección (o varias a menos de `GEO_CERCA_M`, 300 m); con la ciudad pregunta en esa localidad y,
+  si no está, en todo el país quedándose con las de esa ciudad. Se busca una vez por dirección
+  (`geo_at`; lat null = no se encontró), vuelve a buscarse si cambian la dirección o la ciudad, y
+  si Georef no contesta queda para el próximo `/api/boot` (`ubicarLugares`, en segundo plano con
+  `ctx.waitUntil`; al guardar un ticket también, y al corregir el lugar antes de contestar). La
+  ficha del lugar lleva "Ver en el mapa" (OpenStreetMap). Tests en `test/geo.test.mjs` (los tests
+  nunca salen a Georef: `setGeoFetch`).
 - **Mandar a Gastienzos**: en la ficha de un ticket propio (`gzBotonHtml`) y como acción del toast al
   guardarlo, un link a `https://gastienzos.com.ar/app?add=1&monto=&titulo=&fecha=` (`gastienzosUrl`:
   lo pagado, la cadena, la fecha) que abre el alta de Gastienzos completada (allá lo lee
@@ -86,7 +96,7 @@ historial entero.
 public/   index.html (la app en "/"), app.js, styles.css (la capa genérica de "Suave"),
           app.css (lo propio), sw.js, manifest, novedades.json, design-system/
 api/      auth-login, auth-callback, auth-logout, boot, amigos, tickets, productos, lugares
-lib/      http, db, schema, auth, cupo, amigos, lector, ticket, productos, catalogo
+lib/      http, db, schema, auth, cupo, amigos, lector, ticket, productos, catalogo, geo
 scripts/  bump-ui-version.mjs, medir-modelos.mjs
 test/     node --test; los de server contra SQLite real (test/helpers/d1.mjs)
 ```

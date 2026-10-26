@@ -65,7 +65,7 @@ users            id, email, name, picture, created_at
 friendships      user_a, user_b, created_at                 (a < b, una fila por par)
 friend_invites   inviter_id, token_hash, expires_at, accepted_by, …
 
-lugares          id, cadena, sucursal, direccion, ciudad, punto_venta, cuit, creado_por
+lugares          id, cadena, sucursal, direccion, ciudad, punto_venta, cuit, lat, lon, geo_at, creado_por
 lugar_claves     clave → lugar_id                           (dirección y puntos de venta)
 productos        id, nombre, marca, medida, unidad_medida (g|kg|ml|l|u), ean, creado_por
 alias            cadena, texto_ticket → producto_id         (cómo lo escribe el ticket de esa cadena)
@@ -87,6 +87,11 @@ precios          id, ticket_id, user_id, lugar_id, fecha, producto_id (null = si
   terminan siendo el mismo, desde su ficha se le pone la dirección y se juntan. La **ciudad** va
   aparte de la dirección para filtrar por ella; no entra en la clave, porque a veces se lee y a
   veces no.
+- **El punto en el mapa** sale de la dirección con **Georef** (la API de direcciones del
+  gobierno, gratis y sin key). Probado: "Av. Cabildo 2200" con "CABA" da un solo punto; "San
+  Martín 500" sin ciudad da 554; en Villa Allende no tiene la calle. Por eso sólo se guarda
+  cuando el resultado es uno solo: mejor sin punto que con uno mal. Es la base para buscar en
+  el mapa.
 - **El precio guarda todo** (lo pediste así): el de lista por unidad, la cantidad, el
   descuento y lo que pagaste. Para comparar se usa **lo que pagaste por unidad** y, en lo que
   tiene medida, **por kg o por litro** ("$4.200 el kg"), así un paquete de 500 g se compara con
