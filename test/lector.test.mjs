@@ -65,6 +65,27 @@ test('limpiarRespuesta: se queda con lo que es un número y un texto, y nunca m�
   assert.deepEqual(l.avisos, ['La foto 2 está borrosa']);
 });
 
+test('con los precios sin IVA, la app suma el IVA de cada renglón (el modelo sólo copia)', () => {
+  // Nini 1117-00007940: FORMAGGE 0,880 kg a 21.591,59 sin IVA = 19.000,60; con el 21%, 22.990,73.
+  const l = limpiarRespuesta({
+    iva_aparte: true, total: 104481.16, recargos: 329.82,
+    renglones: [
+      { foto: 1, texto: 'FORMAGGE queso gouda x kg', cantidad: 0.88, unidad: 'kg', precio_unitario: 21591.59, importe: 19000.6, descuento: 0, iva: 21 },
+      { foto: 1, texto: 'VACIO nvto. x Kg', cantidad: 1.113, unidad: 'kg', precio_unitario: 17367.59, importe: 21362.14, descuento: 0, iva: 10.5 },
+      { foto: 1, texto: 'ORALI pascualina', cantidad: 2, unidad: 'u', precio_unitario: 1704.49, importe: 2897.63, descuento: 0, iva: null },
+    ],
+  });
+  const [q, v, o] = l.renglones;
+  assert.equal(q.importe, 22990.73);
+  assert.equal(q.precio_unitario, 26125.82);
+  assert.equal(v.importe, 23605.16); // al 10,5%
+  assert.equal(v.cantidad, 1.23); // 1,113 no cierra con el importe: 21362,14 / 17367,59
+  assert.equal(o.importe, 3506.13); // sin %: 21
+  assert.equal(o.cantidad, 2); // lo que no va por kilo no se toca (la promo baja el importe)
+  // Un ticket común no se toca.
+  assert.equal(limpiarRespuesta({ iva_aparte: false, renglones: [{ texto: 'X', cantidad: 1, unidad: 'u', importe: 100, descuento: 0, iva: 21 }] }).renglones[0].importe, 100);
+});
+
 // Un cliente de Anthropic falso: anota el pedido y contesta lo que se le diga.
 function clienteFalso(respuesta, extra = {}) {
   const calls = [];

@@ -25,7 +25,8 @@
     "marca": "Matarazzo",
     "nombre": "Fideos tirabuzón sin TACC",
     "medida_cantidad": 500,
-    "medida_unidad": "g"
+    "medida_unidad": "g",
+    "iva": null
    },
    {
     "foto": 1,
@@ -39,7 +40,8 @@
     "marca": "Nescafé",
     "nombre": "Café instantáneo expresso gold",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -53,7 +55,8 @@
     "marca": "Carrefour",
     "nombre": "Tostadas de arroz sin TACC",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -67,7 +70,8 @@
     "marca": "Bria",
     "nombre": "Snack de chocolate y castañas de cajú",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -81,7 +85,8 @@
     "marca": "Hileret",
     "nombre": "Edulcorante líquido con sucralosa",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -95,7 +100,8 @@
     "marca": "Carrefour",
     "nombre": "Galletitas cubiertas de chocolate con leche",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -109,7 +115,8 @@
     "marca": "Ferrero Rocher",
     "nombre": "Bombones",
     "medida_cantidad": 4,
-    "medida_unidad": "u"
+    "medida_unidad": "u",
+    "iva": null
    },
    {
     "foto": 1,
@@ -123,7 +130,8 @@
     "marca": "Inti Zen",
     "nombre": "Té en hebras Blue Earl Grey",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -137,7 +145,8 @@
     "marca": "Inti Zen",
     "nombre": "Tisana en hebras Be Berries",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -151,7 +160,8 @@
     "marca": "Santa Rosa",
     "nombre": "Queso reggianito en horma",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 1,
@@ -165,7 +175,8 @@
     "marca": "Santa Rosa",
     "nombre": "Queso reggianito en horma",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 2,
@@ -179,7 +190,8 @@
     "marca": "Santa Rosa",
     "nombre": "Queso reggianito en horma",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 2,
@@ -193,7 +205,8 @@
     "marca": null,
     "nombre": "Banana",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 2,
@@ -207,7 +220,8 @@
     "marca": null,
     "nombre": "Pulverizador de plástico",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 2,
@@ -221,7 +235,8 @@
     "marca": "Higienol",
     "nombre": "Papel higiénico doble hoja",
     "medida_cantidad": 4,
-    "medida_unidad": "u"
+    "medida_unidad": "u",
+    "iva": null
    },
    {
     "foto": 2,
@@ -235,7 +250,8 @@
     "marca": "Downy",
     "nombre": "Suavizante concentrado brisa intenso",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    },
    {
     "foto": 2,
@@ -249,7 +265,8 @@
     "marca": "Estrella",
     "nombre": "Algodón hidrófilo premium",
     "medida_cantidad": 75,
-    "medida_unidad": "g"
+    "medida_unidad": "g",
+    "iva": null
    },
    {
     "foto": 2,
@@ -263,7 +280,8 @@
     "marca": "Carrefour",
     "nombre": "Alcohol etílico soft",
     "medida_cantidad": 1,
-    "medida_unidad": "l"
+    "medida_unidad": "l",
+    "iva": null
    },
    {
     "foto": 2,
@@ -277,7 +295,8 @@
     "marca": "Elvive",
     "nombre": "Mascarilla capilar colágeno lifter",
     "medida_cantidad": null,
-    "medida_unidad": null
+    "medida_unidad": null,
+    "iva": null
    }
   ],
   "descartados": [
@@ -396,6 +415,8 @@
     "motivo": "informativo"
    }
   ],
-  "avisos": []
+  "avisos": [],
+  "iva_aparte": false,
+  "recargos": null
  }
 }
