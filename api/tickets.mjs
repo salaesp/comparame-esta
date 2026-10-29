@@ -61,7 +61,10 @@ async function leer(req, userId) {
     await anotar({ usage: e.usage, ms: e.ms }, 0, String(e?.message || e).slice(0, 300));
     if (e.motivo) return error(e.message, 422, { motivo: e.motivo });
     if (e instanceof Anthropic.RateLimitError) return error('Hay muchas lecturas a la vez. Probá en un rato.', 429);
-    if (e instanceof Anthropic.APIError) return error('No pude leer el ticket. Probá de nuevo.', 502);
+    if (e instanceof Anthropic.APIError) {
+      console.error('[lector]', e.status, String(e.message || '').slice(0, 300));
+      return error('No pude leer el ticket. Probá de nuevo.', 502);
+    }
     throw e;
   }
   await anotar(r, 1);

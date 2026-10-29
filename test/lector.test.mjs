@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import {
-  RESPUESTA_SCHEMA, contenido, consigna, limpiarRespuesta, leerTicket, fotosError, costoUsd, lectorConfig, FOTOS_MAX,
+  RESPUESTA_SCHEMA, UNIONES_MAX, contenido, consigna, limpiarRespuesta, leerTicket, fotosError, costoUsd, lectorConfig, FOTOS_MAX,
 } from '../lib/lector.mjs';
 
 const carrefour = JSON.parse(readFileSync(new URL('./fixtures/carrefour-3-fotos.json', import.meta.url)));
@@ -22,6 +22,17 @@ test('el schema cumple lo que pide structured outputs: todo objeto cerrado y con
     for (const k of ['minimum', 'maximum', 'minLength', 'maxLength']) assert.ok(!(k in s), `${camino}: ${k} no se soporta`);
   };
   visitar(RESPUESTA_SCHEMA);
+});
+
+test('el schema no pasa el tope de campos nullable de la API (si no, 400 en cada lectura)', () => {
+  let n = 0;
+  const visitar = (s) => {
+    if (s.anyOf || Array.isArray(s.type)) n++;
+    for (const v of Object.values(s.properties || {})) visitar(v);
+    if (s.items) visitar(s.items);
+  };
+  visitar(RESPUESTA_SCHEMA);
+  assert.ok(n <= UNIONES_MAX, `${n} campos con unión (tope ${UNIONES_MAX})`);
 });
 
 test('una foto con su número antes, y la consigna al final; con varias, la regla del borde', () => {
