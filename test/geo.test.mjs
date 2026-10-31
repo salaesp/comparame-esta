@@ -121,7 +121,11 @@ test('localesDe: el nombre del local, su dirección, la ciudad limpia y el punto
     feat(-58.45, -34.56, { osm_key: 'highway', name: 'Avenida Cabildo', city: CABA }),
     feat(-56.16, -34.9, { osm_key: 'shop', name: 'Ta-Ta', countrycode: 'UY' }),
     feat(2.35, 48.85, { osm_key: 'shop', name: 'Carrefour', countrycode: undefined }),
+    feat(-58.44, -34.6, { osm_key: 'highway', osm_value: 'bus_stop', name: 'Carrefour', city: CABA }),
+    feat(-58.52, -34.49, { osm_key: 'landuse', osm_value: 'industrial', name: 'Carrefour', city: 'Martínez' }),
   ]);
+  // En CABA, la comuna no es la ciudad.
+  assert.equal(localesDe([feat(-58.43, -34.58, { osm_key: 'shop', name: 'Coto', street: 'Jerónimo Salguero', county: 'Comuna 14', state: CABA })])[0].ciudad, 'CABA');
   assert.deepEqual(ls[0], { nombre: 'Carrefour Market', direccion: 'Avenida Cabildo 2441', ciudad: 'CABA', lat: -34.558647, lon: -58.459323, tipo: 'local' });
   assert.equal(ls.length, 3);
   assert.equal(ls[1].direccion, 'Corrientes'); // sin altura
