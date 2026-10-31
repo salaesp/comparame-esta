@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test, { before } from 'node:test';
 import { baseNueva, usuario, pedir } from './helpers/d1.mjs';
-import { elegirPunto, geocodificar, setGeoFetch, metros } from '../lib/geo.mjs';
+import { elegirPunto, geocodificar, setGeoFetch, metros, localesDe } from '../lib/geo.mjs';
 
 const dir = (lat, lon, localidad, departamento, provincia) => ({
   ubicacion: { lat, lon }, localidad_censal: { nombre: localidad }, departamento: { nombre: departamento }, provincia: { nombre: provincia },
@@ -51,7 +51,7 @@ before(async () => {
   ana = await usuario(db.sql, 'ana@x.com', 'Ana');
 });
 let n = 0;
-async function cargar(lugar) {
+async function cargar(lugar, elegido = {}) {
   const total = 2000 + ++n;
   const respuesta = {
     lugar: { cadena: 'Carrefour', sucursal: null, direccion: null, ciudad: null, punto_venta: null, cuit: '30-68731043-4', ...lugar },
@@ -63,7 +63,7 @@ async function cargar(lugar) {
   setAnthropic({ messages: { stream }, beta: { messages: { stream } } });
   const { data: { lectura } } = await pedir(worker, ana, 'POST', '/api/tickets/leer', { fotos: ['data:image/jpeg;base64,AAAA'] });
   const r = await pedir(worker, ana, 'POST', '/api/tickets', {
-    fecha: lectura.fecha, total, lugar: lectura.lugar, renglones: lectura.renglones.map((x) => ({ ...x, producto_id: null, nuevo: { nombre: x.nombre } })),
+    fecha: lectura.fecha, total, lugar: { ...lectura.lugar, ...elegido }, renglones: lectura.renglones.map((x) => ({ ...x, producto_id: null, nuevo: { nombre: x.nombre } })),
   });
   assert.equal(r.status, 201);
   return (await db.sql('select l.* from tickets t join lugares l on l.id = t.lugar_id where t.id = ?1', [r.data.id]))[0];
@@ -106,5 +106,64 @@ test('poner la dirección desde la ficha busca el punto antes de contestar; si n
   let llamadas = 0;
   setGeoFetch(async () => { llamadas++; return Response.json({ direcciones: [] }); });
   await pedir(worker, ana, 'PATCH', `/api/lugares/${l.id}`, { sucursal: 'Cabildo' });
+  assert.equal(llamadas, 0);
+});
+
+// Lo que contesta Photon (photon.komoot.io), con su forma de verdad.
+const feat = (lon, lat, p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { countrycode: 'AR', ...p } });
+const MARKET = feat(-58.4593228, -34.5586467, { osm_key: 'shop', osm_value: 'supermarket', name: 'Carrefour Market', street: 'Avenida Cabildo', housenumber: '2441', city: CABA });
+
+test('localesDe: el nombre del local, su dirección, la ciudad limpia y el punto; nada de afuera', () => {
+  const ls = localesDe([
+    MARKET,
+    MARKET, // repetido
+    feat(-58.29, -34.74, { osm_key: 'shop', name: 'Coto', street: 'Corrientes', city: 'Quilmes Oeste' }),
+    feat(-58.45, -34.56, { osm_key: 'highway', name: 'Avenida Cabildo', city: CABA }),
+    feat(-56.16, -34.9, { osm_key: 'shop', name: 'Ta-Ta', countrycode: 'UY' }),
+    feat(2.35, 48.85, { osm_key: 'shop', name: 'Carrefour', countrycode: undefined }),
+  ]);
+  assert.deepEqual(ls[0], { nombre: 'Carrefour Market', direccion: 'Avenida Cabildo 2441', ciudad: 'CABA', lat: -34.558647, lon: -58.459323, tipo: 'local' });
+  assert.equal(ls.length, 3);
+  assert.equal(ls[1].direccion, 'Corrientes'); // sin altura
+  assert.deepEqual([ls[2].nombre, ls[2].tipo], ['Avenida Cabildo', 'direccion']);
+});
+
+test('buscar el local: sesgado hacia donde estás y acotado a Argentina; si Photon no contesta, 502', async () => {
+  let q;
+  setGeoFetch(async (url) => { q = new URL(url).searchParams; return Response.json({ features: [MARKET] }); });
+  const r = await pedir(worker, ana, 'GET', '/api/lugares/buscar?q=carrefour%20cabildo&lat=-34.6&lon=-58.44');
+  assert.equal(r.status, 200);
+  assert.equal(r.data.locales[0].nombre, 'Carrefour Market');
+  assert.equal(q.get('q'), 'carrefour cabildo');
+  assert.equal(q.get('lat'), '-34.6');
+  assert.ok(q.get('bbox'));
+  // Sin dónde estás, no se manda.
+  await pedir(worker, ana, 'GET', '/api/lugares/buscar?q=coto');
+  assert.equal(q.get('lat'), null);
+  setGeoFetch(async () => new Response('caído', { status: 503 }));
+  assert.equal((await pedir(worker, ana, 'GET', '/api/lugares/buscar?q=coto')).status, 502);
+});
+
+test('el local elegido en el buscador trae su punto: se guarda tal cual, sin pasar por Georef', async () => {
+  let llamadas = 0;
+  setGeoFetch(async () => { llamadas++; return Response.json({ direcciones: [] }); });
+  const l = await cargar({ cadena: 'Jumbo', cuit: null }, { direccion: 'Avenida Cabildo 2441', ciudad: 'CABA', lat: -34.558647, lon: -58.459323 });
+  assert.equal(l.lat, -34.558647);
+  assert.equal(l.direccion, 'Avenida Cabildo 2441');
+  assert.ok(l.geo_at);
+  assert.equal(llamadas, 0);
+  // Un punto fuera de Argentina no vale: se busca con Georef.
+  const l2 = await cargar({ cadena: 'Disco', cuit: null }, { direccion: 'Mitre 20', ciudad: 'Rosario', lat: 48.85, lon: 2.35 });
+  assert.equal(llamadas > 0, true);
+  assert.equal(l2.lat, null);
+});
+
+test('corregir el lugar eligiendo el local: se queda con ese punto', async () => {
+  const l = await cargar({ cadena: 'Vea', cuit: null, punto_venta: '0777' });
+  let llamadas = 0;
+  setGeoFetch(async () => { llamadas++; return Response.json({ direcciones: [] }); });
+  const r = await pedir(worker, ana, 'PATCH', `/api/lugares/${l.id}`, { direccion: 'Corrientes 1000', ciudad: 'Quilmes Oeste', lat: -34.74, lon: -58.29 });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.data.lugar.lat, r.data.lugar.lon, r.data.lugar.ciudad], [-34.74, -58.29, 'Quilmes Oeste']);
   assert.equal(llamadas, 0);
 });

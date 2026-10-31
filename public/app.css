@@ -171,6 +171,18 @@
 .mapa__nota { text-align: left; }
 .linkbtn { border: none; background: none; padding: 0; color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
+/* Buscar el local (la revisión y la ficha del lugar): un mapa chico con los resultados
+   numerados y la lista debajo; el elegido, tonal con aro (como .ciudad.active). */
+.locmap { height: 200px; margin-top: var(--sp-3); border-radius: var(--r-m); }
+.locmap[hidden] { display: none; }
+.locres { display: flex; flex-direction: column; margin-top: var(--sp-2); }
+.locres__msg { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.locrow { border-radius: var(--r-m); }
+.locrow__n { font-weight: 700; font-size: var(--t-label); font-variant-numeric: tabular-nums; }
+.locrow--on { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent-ink); }
+.locrow--on .locrow__n { color: var(--accent-ink); }
+.mpin--local { width: 28px; height: 28px; background: var(--surface-high); color: var(--text); }
+
 /* Los puntos: la inicial del lugar en su color o, con un producto, el precio en una píldora.
    El más barato, tonal (como .chip--best); los precios viejos, apagados. */
 .mpin-wrap { background: none; border: none; }

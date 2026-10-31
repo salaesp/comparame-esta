@@ -810,9 +810,9 @@ function openLugar(id) {
       return `${modalHead(lugarNombre(l), [lugarDonde(l), l?.cuit ? `CUIT ${l.cuit}` : ''].filter(Boolean).join(' · '))}
       ${l?.direccion ? `<p class="lugardonde">${ic('pin', 18)}<span>${esc(lugarDonde(l))}${l.cuit ? ` · CUIT ${esc(l.cuit)}` : ''}</span></p>
         ${l.lat != null ? `<button type="button" class="set__btn lugarmapa" data-ver-mapa="${esc(id)}">${ic('map', 18)} Ver en el mapa</button>`
-          : l.geo_at ? `<p class="note">No encontré esta dirección en el mapa: revisá que esté bien escrita y que tenga la ciudad.</p>` : ''}` : ''}
+          : l.geo_at ? `<p class="note">No encontré esta dirección en el mapa. ${lugarEditable(l) ? `<button type="button" class="linkbtn" data-lugar-edit="${esc(id)}">Buscá el local</button> y elegilo.` : 'Revisá que esté bien escrita y que tenga la ciudad.'}</p>` : ''}` : ''}
       ${l && !l.direccion ? `<div class="control">${ic('pin', 20)}<span><b>Todavía no tiene dirección.</b> ${l.punto_venta ? `Lo reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : 'Sin ella, todas las sucursales de la cadena son una.'}
-        ${lugarEditable(l) ? `<button type="button" class="set__btn control__btn" data-lugar-edit="${esc(id)}">Ponerle la dirección</button>` : ''}</span></div>` : ''}
+        ${lugarEditable(l) ? `<button type="button" class="set__btn control__btn" data-lugar-edit="${esc(id)}">${ic('search', 18)} Buscar el local</button>` : ''}</span></div>` : ''}
       ${masBarato.length ? `<span class="setsub">Acá está más barato</span><div class="gcard">${masBarato.map(productoRowHtml).join('')}</div>` : ''}
       <span class="setsub">Tickets</span><div class="gcard">${tks.map(ticketRowHtml).join('')}</div>
       ${aca.length ? `<span class="setsub">Productos con precio acá (${aca.length})</span><div class="gcard">${aca.map(productoRowHtml).join('')}</div>` : ''}
@@ -827,16 +827,17 @@ function openLugarEdit(id) {
   if (!l) return;
   const sh = openSheet({
     title: lugarNombre(l),
-    body: `<div class="accf">
+    body: `${localBuscadorHtml('le', l)}
+    <div class="accf">
       <label class="accf__field"><span>Sucursal</span><input type="text" id="le-sucursal" value="${esc(l.sucursal || '')}" maxlength="60" placeholder="Opcional"></label>
-      <label class="accf__field"><span>Dirección</span><input type="text" id="le-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
-      <label class="accf__field"><span>Ciudad</span><input type="text" id="le-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
       <p class="accf__hint">El lugar es el mismo para todos: con la dirección se distingue una sucursal de otra.</p>
     </div>`,
     foot: '<button type="button" class="mvf__submit" id="le-ok">Guardar</button>',
-    onMount: (el) => el.querySelector('#le-ok').addEventListener('click', async () => {
+    onMount: (el) => {
+      const bus = wireLocalBuscador(el, 'le', { consulta: [l.cadena, l.direccion || l.ciudad].filter(Boolean).join(' '), inicial: l, ciudad: l.ciudad || '' });
+      el.querySelector('#le-ok').addEventListener('click', async () => {
       const btn = el.querySelector('#le-ok');
-      const body = { sucursal: el.querySelector('#le-sucursal').value, direccion: el.querySelector('#le-dir').value, ciudad: el.querySelector('#le-ciudad').value };
+      const body = { sucursal: el.querySelector('#le-sucursal').value, direccion: bus.direccion(), ciudad: bus.ciudad(), ...(bus.punto() || {}) };
       btn.classList.add('mvf__submit--busy'); btn.disabled = true;
       const listo = async (d) => {
         sh.close();
@@ -859,8 +860,145 @@ function openLugarEdit(id) {
         }
         if (e.status !== 401) toast(e.message, { icon: 'error' });
       }
-    }),
+      });
+    },
   });
+}
+
+// ---------- Buscar el local (como en Google Maps) ----------
+// En vez de escribir la dirección: se busca el local ("Carrefour Cabildo"), los que aparecen
+// van en un mapa chico y en una lista, y al tocar uno se completan la dirección, la ciudad y
+// su punto (que se guarda tal cual: no pasa por Georef). La búsqueda sale de
+// /api/lugares/buscar (OpenStreetMap), sesgada hacia donde estás o, si no se sabe, hacia tus
+// lugares de esa ciudad. Abajo quedan la dirección y la ciudad para retocarlas a mano.
+const LOCAL_ESPERA_MS = 450;
+// Hacia dónde sesgar la búsqueda: donde estás o el medio de tus lugares (de esa ciudad, si hay).
+function sesgoBusqueda(ciudad = '') {
+  if (mapa.pos) return mapa.pos;
+  const todos = [...state.lugares.values()].filter(ubicado);
+  const deCiudad = todos.filter((l) => ciudad && l.ciudad === ciudad);
+  const ls = deCiudad.length ? deCiudad : todos;
+  if (!ls.length) return null;
+  return { lat: ls.reduce((a, l) => a + l.lat, 0) / ls.length, lon: ls.reduce((a, l) => a + l.lon, 0) / ls.length };
+}
+// La calle sin la altura: retocar la altura del local elegido no le saca el punto.
+const calleDe = (d) => normQ(String(d || '').replace(/\s*\d+\s*$/, ''));
+// El campo de búsqueda, el mapa chico, los resultados y, debajo, la dirección y la ciudad.
+function localBuscadorHtml(p, l) {
+  return `<span class="setsub">¿Dónde es?</span>
+    <label class="buscador buscador--in"><span class="sr-only">Buscar el local</span>${ic('search', 18)}<input type="search" id="${p}-lq" placeholder="Buscá el local: Carrefour Cabildo" autocomplete="off" enterkeyhint="search"></label>
+    <div class="mapa__map locmap" id="${p}-lmap" hidden role="img" aria-label="Los locales encontrados en el mapa"></div>
+    <div id="${p}-lres" class="locres" aria-live="polite"></div>
+    <div class="accf">
+      <label class="accf__field"><span>Dirección</span><input type="text" id="${p}-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
+      <label class="accf__field"><span>Ciudad</span><input type="text" id="${p}-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
+    </div>`;
+}
+// Un local encontrado: su nombre, dónde queda y a qué distancia (si se sabe dónde estás).
+function localRowHtml(loc, i, { elegido = false } = {}) {
+  const donde = [loc.nombre !== loc.direccion ? loc.direccion : '', loc.ciudad].filter(Boolean).join(', ');
+  const dist = mapa.pos ? metros(mapa.pos, loc) : null;
+  return `<button type="button" class="mrow txrow locrow${elegido ? ' locrow--on' : ''}" data-local="${i}" aria-pressed="${elegido}">
+    <span class="mrow__ic locrow__n" aria-hidden="true">${elegido ? ic('check', 20) : i + 1}</span>
+    <span class="mrow__text"><span class="mrow__title">${esc(loc.nombre)}</span>
+      <span class="row__meta"><span class="movchips">${dist != null ? `<span class="chip chip--dist">${esc(distLabel(dist))}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${loc.direccion && !/\d/.test(loc.direccion) ? '<span class="chip">Sin altura</span>' : ''}</span></span></span>
+  </button>`;
+}
+// Su punto en el mapa chico: el número de la lista (el elegido, tonal con aro).
+const localPinHtml = (n, { elegido = false } = {}) => `<span class="mpin mpin--local${elegido ? ' mpin--best' : ''}">${esc(String(n))}</span>`;
+// Lo arma dentro de una hoja. consulta: con qué se busca al abrir. Devuelve punto(): el
+// { lat, lon } del local elegido (null si no se eligió o se cambió la dirección a mano).
+function wireLocalBuscador(el, p, { consulta = '', inicial = null, ciudad = '' } = {}) {
+  const q = el.querySelector(`#${p}-lq`), res = el.querySelector(`#${p}-lres`), mapEl = el.querySelector(`#${p}-lmap`);
+  const dir = el.querySelector(`#${p}-dir`), ciu = el.querySelector(`#${p}-ciudad`);
+  let locales = [], elegido = inicial && ubicado(inicial) ? { ...inicial } : null, timer = 0, ctrl = null, map = null, pines = null;
+  let fijo = false; // ya se encuadraron estos resultados: elegir uno no mueve el mapa
+  const pintar = () => {
+    res.innerHTML = locales.map((loc, i) => localRowHtml(loc, i, { elegido: !!elegido && elegido.lat === loc.lat && elegido.lon === loc.lon })).join('');
+    hydrateIcons(res);
+    pintarMapita();
+  };
+  async function pintarMapita() {
+    const pts = locales.length ? locales : elegido ? [elegido] : [];
+    if (!pts.length) { mapEl.hidden = true; return; }
+    let L;
+    try { L = await cargarLeaflet(); } catch { mapEl.hidden = true; return; } // sin mapa, queda la lista
+    if (!mapEl.isConnected) return;
+    mapEl.hidden = false;
+    if (!map) {
+      map = L.map(mapEl, { zoomControl: false, attributionControl: true });
+      map.attributionControl.setPrefix(false);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+      pines = L.layerGroup().addTo(map);
+    }
+    map.invalidateSize();
+    pines.clearLayers();
+    const on = (loc) => !!elegido && elegido.lat === loc.lat && elegido.lon === loc.lon;
+    pts.forEach((loc, i) => {
+      L.marker([loc.lat, loc.lon], {
+        icon: L.divIcon({ className: 'mpin-wrap', html: localPinHtml(locales.length ? i + 1 : '✓', { elegido: on(loc) }), iconSize: null }),
+        title: loc.nombre || '', keyboard: true, zIndexOffset: on(loc) ? 1000 : 0,
+      }).on('click', () => { if (locales.length) elegir(i); }).addTo(pines);
+    });
+    // Al elegir uno de la lista el mapa no se mueve (salvo que no esté a la vista); el lugar
+    // que ya tenía punto, sin resultados, al medio.
+    if (elegido && !locales.length) map.setView([elegido.lat, elegido.lon], 16);
+    else if (elegido && pts.some(on) && fijo) { if (!map.getBounds().contains([elegido.lat, elegido.lon])) map.panTo([elegido.lat, elegido.lon]); }
+    else map.fitBounds(L.latLngBounds(pts.map((x) => [x.lat, x.lon])), { padding: [28, 28], maxZoom: 16 });
+  }
+  function elegir(i) {
+    const loc = locales[i];
+    if (!loc) return;
+    elegido = { ...loc };
+    fijo = true;
+    if (loc.direccion) dir.value = loc.direccion;
+    if (loc.ciudad) ciu.value = loc.ciudad;
+    navigator.vibrate?.(15);
+    pintar();
+  }
+  async function buscar() {
+    const texto = q.value.trim();
+    ctrl?.abort();
+    if (texto.length < 3) { locales = []; pintar(); return; }
+    ctrl = new AbortController();
+    res.innerHTML = `<p class="note locres__msg"><span class="mvf__spin" aria-hidden="true"></span> Buscando…</p>`;
+    const s = sesgoBusqueda(ciu.value.trim() || ciudad);
+    const qs = new URLSearchParams({ q: texto, ...(s ? { lat: s.lat.toFixed(4), lon: s.lon.toFixed(4) } : {}) });
+    try {
+      const d = await apiFetch(`/api/lugares/buscar?${qs}`, { signal: ctrl.signal });
+      locales = d.locales || [];
+      fijo = false;
+      if (!locales.length) {
+        res.innerHTML = `<p class="note locres__msg">No encontré «${esc(texto)}». Probá con la calle o el barrio, o escribí la dirección abajo.</p>`;
+        pintarMapita();
+        return;
+      }
+      pintar();
+    } catch (e) {
+      if (e?.name === 'AbortError' || e.status === 401) return;
+      locales = [];
+      res.innerHTML = `<p class="note locres__msg">${esc(e.message)}</p>`;
+    }
+  }
+  q.value = consulta;
+  q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, LOCAL_ESPERA_MS); });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); buscar(); } });
+  res.addEventListener('click', (e) => { const b = e.target.closest('[data-local]'); if (b) elegir(Number(b.dataset.local)); });
+  // Otra calle u otra ciudad escritas a mano ya no son el local elegido: sin su punto (lo busca Georef).
+  const aMano = () => {
+    if (!elegido) return;
+    if (calleDe(dir.value) !== calleDe(elegido.direccion) || (elegido.ciudad && normQ(ciu.value) !== normQ(elegido.ciudad))) { elegido = null; pintar(); }
+  };
+  dir.addEventListener('input', aMano);
+  ciu.addEventListener('input', aMano);
+  // La hoja entra con una animación: el mapa se acomoda cuando termina.
+  setTimeout(() => map?.invalidateSize(), 350);
+  if (consulta.trim().length >= 3) buscar(); else pintarMapita();
+  return {
+    punto: () => (elegido && dir.value.trim() ? { lat: elegido.lat, lon: elegido.lon } : null),
+    direccion: () => dir.value.trim(),
+    ciudad: () => ciu.value.trim(),
+  };
 }
 
 // ---------- Mapa ----------
@@ -1319,8 +1457,8 @@ function fechaRaraHtml(f) {
 // Sin la dirección no se sabe qué sucursal es: se avisa, con cómo arreglarlo.
 function sinDireccionHtml(l) {
   if (!l.cadena || l.direccion) return '';
-  return `<div class="control">${ic('pin', 20)}<span><b>No encontré la dirección del local.</b> Sacale una foto también a la parte de arriba del ticket, o escribila: con ella se distingue una sucursal de otra.${l.punto_venta ? ` Mientras tanto la reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : ''}
-    <button type="button" class="set__btn control__btn" data-rev-lugar>Escribir la dirección</button></span></div>`;
+  return `<div class="control">${ic('pin', 20)}<span><b>No encontré la dirección del local.</b> Buscá el local en el mapa o sacale una foto también a la parte de arriba del ticket: con la dirección se distingue una sucursal de otra.${l.punto_venta ? ` Mientras tanto la reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : ''}
+    <button type="button" class="set__btn control__btn" data-rev-lugar>${ic('search', 18)} Buscar el local</button></span></div>`;
 }
 function revisionHtml() {
   const l = rev.lugar;
@@ -1370,23 +1508,37 @@ function editLugar() {
     title: 'El lugar',
     body: `<div class="accf">
       <label class="accf__field"><span>Comercio</span><input type="text" id="lg-cadena" value="${esc(l.cadena || '')}" maxlength="60" placeholder="Carrefour, Coto, Día…"></label>
+    </div>
+    ${localBuscadorHtml('lg', l)}
+    <div class="accf">
       <label class="accf__field"><span>Sucursal</span><input type="text" id="lg-sucursal" value="${esc(l.sucursal || '')}" maxlength="60" placeholder="Opcional"></label>
-      <label class="accf__field"><span>Dirección</span><input type="text" id="lg-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
-      <label class="accf__field"><span>Ciudad</span><input type="text" id="lg-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
       <p class="accf__hint">Con la dirección se distingue una sucursal de otra.${l.punto_venta ? ` Sin ella, la reconozco por el punto de venta del ticket (${esc(pvLabel(l.punto_venta))}).` : ''}</p>
     </div>`,
     foot: '<button type="button" class="mvf__submit" id="lg-ok">Listo</button>',
-    onMount: (el) => el.querySelector('#lg-ok').addEventListener('click', () => {
-      const cadena = el.querySelector('#lg-cadena').value.trim();
-      if (!cadena) { toast('Falta el nombre del comercio.', { icon: 'error' }); return; }
-      const nuevo = { cadena, sucursal: el.querySelector('#lg-sucursal').value.trim(), direccion: el.querySelector('#lg-dir').value.trim(), ciudad: el.querySelector('#lg-ciudad').value.trim() };
-      // Otro comercio u otra dirección ya no es el lugar que se encontró: el server lo busca
-      // o lo crea. La sucursal o la ciudad sólo le completan lo que no tenga.
-      const otro = nuevo.cadena !== l.cadena || nuevo.direccion !== (l.direccion || '');
-      rev.lugar = { ...l, ...nuevo, ...(otro ? { id: undefined, existe: false } : {}) };
-      sh.close();
-      repaintModal();
-    }),
+    onMount: (el) => {
+      const consulta = () => [el.querySelector('#lg-cadena').value.trim(), l.direccion || l.ciudad].filter(Boolean).join(' ');
+      const bus = wireLocalBuscador(el, 'lg', { consulta: consulta(), inicial: l, ciudad: l.ciudad || '' });
+      // Con el comercio cambiado y la búsqueda sin tocar, se busca el nuevo.
+      const lq = el.querySelector('#lg-lq');
+      let previa = lq.value;
+      el.querySelector('#lg-cadena').addEventListener('change', () => {
+        if (lq.value !== previa) return;
+        lq.value = previa = consulta();
+        lq.dispatchEvent(new Event('input'));
+      });
+      el.querySelector('#lg-ok').addEventListener('click', () => {
+        const cadena = el.querySelector('#lg-cadena').value.trim();
+        if (!cadena) { toast('Falta el nombre del comercio.', { icon: 'error' }); return; }
+        const punto = bus.punto();
+        const nuevo = { cadena, sucursal: el.querySelector('#lg-sucursal').value.trim(), direccion: bus.direccion(), ciudad: bus.ciudad(), lat: punto?.lat ?? null, lon: punto?.lon ?? null };
+        // Otro comercio u otra dirección ya no es el lugar que se encontró: el server lo busca
+        // o lo crea. La sucursal o la ciudad sólo le completan lo que no tenga.
+        const otro = nuevo.cadena !== l.cadena || nuevo.direccion !== (l.direccion || '');
+        rev.lugar = { ...l, ...nuevo, ...(otro ? { id: undefined, existe: false } : {}) };
+        sh.close();
+        repaintModal();
+      });
+    },
   });
 }
 
@@ -1516,6 +1668,8 @@ async function guardarRevision(btn, forzar = false) {
       ...(rev.lugar.existe ? { id: rev.lugar.id } : {}),
       cadena: rev.lugar.cadena || '', sucursal: rev.lugar.sucursal || '', direccion: rev.lugar.direccion || '',
       ciudad: rev.lugar.ciudad || '', punto_venta: rev.lugar.punto_venta || '', cuit: rev.lugar.cuit || '',
+      // El punto del local elegido en el buscador.
+      ...(ubicado(rev.lugar) ? { lat: rev.lugar.lat, lon: rev.lugar.lon } : {}),
     },
     total: rev.total, n_fotos: rev.nFotos, modelo: rev.modelo,
     ...(forzar ? { forzar: true } : {}),
@@ -1770,7 +1924,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, mapPinHtml, mapaRowHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, mapPinHtml, mapaRowHtml, localRowHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

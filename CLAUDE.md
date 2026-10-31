@@ -46,6 +46,16 @@ Toda la UI y los textos van en castellano rioplatense.
   si Georef no contesta queda para el próximo `/api/boot` (`ubicarLugares`, en segundo plano con
   `ctx.waitUntil`; al guardar un ticket también, y al corregir el lugar antes de contestar). Tests
   en `test/geo.test.mjs` (los tests nunca salen a Georef: `setGeoFetch`).
+- **Buscar el local** (como en Google Maps): en la hoja del lugar de la revisión (`editLugar`) y al
+  corregirlo desde su ficha (`openLugarEdit`) la dirección no se escribe: se busca el local
+  (`localBuscadorHtml` + `wireLocalBuscador`, arranca con "cadena + dirección o ciudad"), los
+  resultados van numerados en un mapa chico (`localPinHtml`) y en una lista (`localRowHtml`), y
+  tocar uno completa la dirección, la ciudad y su `lat`/`lon`. `GET /api/lugares/buscar?q=&lat=&lon=`
+  (`buscarLocales` de `lib/geo.mjs`) le pregunta a **Photon** (photon.komoot.io, OpenStreetMap,
+  gratis y sin key), acotado a Argentina y sesgado hacia donde estás o hacia tus lugares de esa
+  ciudad (`sesgoBusqueda`). El punto elegido viaja con el lugar (`POST /api/tickets`,
+  `PATCH /api/lugares/:id`; `puntoValido`) y se guarda tal cual, sin Georef. Cambiar a mano la
+  calle o la ciudad le saca el punto (lo busca Georef); la altura, no. Tests en `test/geo.test.mjs`.
 - **La pantalla Mapa** (`mapaHtml`, cuarta de la barra): los lugares con punto en un mapa de
   **OpenStreetMap con Leaflet** 1.9.4 (de cdnjs, con integrity, cargado recién al abrirla:
   `cargarLeaflet`; en oscuro los mosaicos van invertidos con un filtro). Cada punto
