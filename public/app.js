@@ -867,11 +867,13 @@ function openLugarEdit(id) {
 
 // ---------- Buscar el local (como en Google Maps) ----------
 // En vez de escribir la dirección: se busca el local ("Carrefour Cabildo"), los que aparecen
-// van en un mapa chico y en una lista, y al tocar uno se completan la dirección, la ciudad y
-// su punto (que se guarda tal cual: no pasa por Georef). La búsqueda sale de
-// /api/lugares/buscar (OpenStreetMap), sesgada hacia donde estás o, si no se sabe, hacia tus
-// lugares de esa ciudad. Abajo quedan la dirección y la ciudad para retocarlas a mano.
+// van como puntos en el mapa y al tocar uno se completan la dirección, la ciudad y su punto
+// (que se guarda tal cual: no pasa por Georef). Sólo el buscador y el mapa; debajo, el local
+// elegido. La búsqueda sale de /api/lugares/buscar (OpenStreetMap), sesgada hacia donde estás
+// o, si no se sabe, hacia tus lugares de esa ciudad. Si no aparece, "Escribí la dirección"
+// abre los campos de siempre.
 const LOCAL_ESPERA_MS = 450;
+const MAPA_CENTRO = { lat: -34.6, lon: -58.44 }; // Buenos Aires, si no hay nada mejor
 // Hacia dónde sesgar la búsqueda: donde estás o el medio de tus lugares (de esa ciudad, si hay).
 function sesgoBusqueda(ciudad = '') {
   if (mapa.pos) return mapa.pos;
@@ -883,117 +885,124 @@ function sesgoBusqueda(ciudad = '') {
 }
 // La calle sin la altura: retocar la altura del local elegido no le saca el punto.
 const calleDe = (d) => normQ(String(d || '').replace(/\s*\d+\s*$/, ''));
-// El campo de búsqueda, el mapa chico, los resultados y, debajo, la dirección y la ciudad.
+// El buscador, el mapa, el local elegido y, escondidos, la dirección y la ciudad a mano.
 function localBuscadorHtml(p, l) {
   return `<span class="setsub">¿Dónde es?</span>
     <label class="buscador buscador--in"><span class="sr-only">Buscar el local</span>${ic('search', 18)}<input type="search" id="${p}-lq" placeholder="Buscá el local: Carrefour Cabildo" autocomplete="off" enterkeyhint="search"></label>
-    <div class="mapa__map locmap" id="${p}-lmap" hidden role="img" aria-label="Los locales encontrados en el mapa"></div>
-    <div id="${p}-lres" class="locres" aria-live="polite"></div>
-    <div class="accf">
-      <label class="accf__field"><span>Dirección</span><input type="text" id="${p}-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
-      <label class="accf__field"><span>Ciudad</span><input type="text" id="${p}-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
-    </div>`;
+    <div class="mapa__map locmap" id="${p}-lmap" role="application" aria-label="Mapa: tocá el local"><div class="mapa__load">${ic('map', 28)}<span>Cargando el mapa…</span></div></div>
+    <div id="${p}-lsel" class="locsel" aria-live="polite"></div>
+    <details class="locmano" id="${p}-mano"><summary>¿No aparece? Escribí la dirección</summary>
+      <div class="accf">
+        <label class="accf__field"><span>Dirección</span><input type="text" id="${p}-dir" value="${esc(l.direccion || '')}" maxlength="120" placeholder="Calle y altura"></label>
+        <label class="accf__field"><span>Ciudad</span><input type="text" id="${p}-ciudad" value="${esc(l.ciudad || '')}" maxlength="60" placeholder="CABA, Rosario…"></label>
+      </div>
+    </details>`;
 }
-// Un local encontrado: su nombre, dónde queda y a qué distancia (si se sabe dónde estás).
-function localRowHtml(loc, i, { elegido = false } = {}) {
-  const donde = [loc.nombre !== loc.direccion ? loc.direccion : '', loc.ciudad].filter(Boolean).join(', ');
+// Debajo del mapa: el local elegido (su nombre y dónde queda) o qué hacer.
+function localSelHtml(loc, msg = '') {
+  if (!loc) return `<p class="note locsel__msg">${msg}</p>`;
+  const donde = [loc.nombre && loc.nombre !== loc.direccion ? loc.direccion : '', loc.ciudad].filter(Boolean).join(', ');
   const dist = mapa.pos ? metros(mapa.pos, loc) : null;
-  return `<button type="button" class="mrow txrow locrow${elegido ? ' locrow--on' : ''}" data-local="${i}" aria-pressed="${elegido}">
-    <span class="mrow__ic locrow__n" aria-hidden="true">${elegido ? ic('check', 20) : i + 1}</span>
-    <span class="mrow__text"><span class="mrow__title">${esc(loc.nombre)}</span>
-      <span class="row__meta"><span class="movchips">${dist != null ? `<span class="chip chip--dist">${esc(distLabel(dist))}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${loc.direccion && !/\d/.test(loc.direccion) ? '<span class="chip">Sin altura</span>' : ''}</span></span></span>
-  </button>`;
+  return `<div class="locsel__card">${ic('pin', 20)}<span class="locsel__text"><b>${esc(loc.nombre || loc.direccion || 'El local')}</b>
+    <span class="row__meta"><span class="movchips">${dist != null ? `<span class="chip chip--dist">${esc(distLabel(dist))}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${loc.direccion && !/\d/.test(loc.direccion) ? '<span class="chip">Sin altura</span>' : ''}</span></span></span></div>`;
 }
-// Su punto en el mapa chico: el número de la lista (el elegido, tonal con aro).
-const localPinHtml = (n, { elegido = false } = {}) => `<span class="mpin mpin--local${elegido ? ' mpin--best' : ''}">${esc(String(n))}</span>`;
+// Un local en el mapa (el elegido, tonal con aro).
+const localPinHtml = ({ elegido = false } = {}) => `<span class="mpin mpin--local${elegido ? ' mpin--best' : ''}">${ic('pin', 16)}</span>`;
 // Lo arma dentro de una hoja. consulta: con qué se busca al abrir. Devuelve punto(): el
 // { lat, lon } del local elegido (null si no se eligió o se cambió la dirección a mano).
 function wireLocalBuscador(el, p, { consulta = '', inicial = null, ciudad = '' } = {}) {
-  const q = el.querySelector(`#${p}-lq`), res = el.querySelector(`#${p}-lres`), mapEl = el.querySelector(`#${p}-lmap`);
-  const dir = el.querySelector(`#${p}-dir`), ciu = el.querySelector(`#${p}-ciudad`);
-  let locales = [], elegido = inicial && ubicado(inicial) ? { ...inicial } : null, timer = 0, ctrl = null, map = null, pines = null;
-  let fijo = false; // ya se encuadraron estos resultados: elegir uno no mueve el mapa
-  const pintar = () => {
-    res.innerHTML = locales.map((loc, i) => localRowHtml(loc, i, { elegido: !!elegido && elegido.lat === loc.lat && elegido.lon === loc.lon })).join('');
-    hydrateIcons(res);
-    pintarMapita();
+  const q = el.querySelector(`#${p}-lq`), sel = el.querySelector(`#${p}-lsel`), mapEl = el.querySelector(`#${p}-lmap`);
+  const dir = el.querySelector(`#${p}-dir`), ciu = el.querySelector(`#${p}-ciudad`), mano = el.querySelector(`#${p}-mano`);
+  let locales = [], elegido = inicial && ubicado(inicial) ? { nombre: lugarNombre(inicial), ...inicial } : null;
+  let timer = 0, ctrl = null, map = null, pines = null, msg = '';
+  const on = (loc) => !!elegido && elegido.lat === loc.lat && elegido.lon === loc.lon;
+  const pintarSel = () => {
+    sel.innerHTML = localSelHtml(elegido, msg || (locales.length ? 'Tocá tu local en el mapa.' : 'Buscá el local por su nombre y la calle o el barrio.'));
+    hydrateIcons(sel);
   };
-  async function pintarMapita() {
-    const pts = locales.length ? locales : elegido ? [elegido] : [];
-    if (!pts.length) { mapEl.hidden = true; return; }
-    let L;
-    try { L = await cargarLeaflet(); } catch { mapEl.hidden = true; return; } // sin mapa, queda la lista
-    if (!mapEl.isConnected) return;
-    mapEl.hidden = false;
-    if (!map) {
-      map = L.map(mapEl, { zoomControl: false, attributionControl: true });
-      map.attributionControl.setPrefix(false);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
-      pines = L.layerGroup().addTo(map);
-    }
-    map.invalidateSize();
+  // Los puntos; encuadrar: después de una búsqueda nueva (al elegir, el mapa no se mueve).
+  function pintarMapa(encuadrar = false) {
+    pintarSel();
+    if (!map) return;
+    const L = window.L;
     pines.clearLayers();
-    const on = (loc) => !!elegido && elegido.lat === loc.lat && elegido.lon === loc.lon;
-    pts.forEach((loc, i) => {
+    const pts = locales.length ? locales : elegido ? [elegido] : [];
+    for (const loc of pts) {
       L.marker([loc.lat, loc.lon], {
-        icon: L.divIcon({ className: 'mpin-wrap', html: localPinHtml(locales.length ? i + 1 : '✓', { elegido: on(loc) }), iconSize: null }),
-        title: loc.nombre || '', keyboard: true, zIndexOffset: on(loc) ? 1000 : 0,
-      }).on('click', () => { if (locales.length) elegir(i); }).addTo(pines);
-    });
-    // Al elegir uno de la lista el mapa no se mueve (salvo que no esté a la vista); el lugar
-    // que ya tenía punto, sin resultados, al medio.
-    if (elegido && !locales.length) map.setView([elegido.lat, elegido.lon], 16);
-    else if (elegido && pts.some(on) && fijo) { if (!map.getBounds().contains([elegido.lat, elegido.lon])) map.panTo([elegido.lat, elegido.lon]); }
-    else map.fitBounds(L.latLngBounds(pts.map((x) => [x.lat, x.lon])), { padding: [28, 28], maxZoom: 16 });
+        icon: L.divIcon({ className: 'mpin-wrap', html: localPinHtml({ elegido: on(loc) }), iconSize: null }),
+        title: [loc.nombre, loc.direccion].filter(Boolean).join(', '), keyboard: true, zIndexOffset: on(loc) ? 1000 : 0,
+      }).on('click', () => elegir(loc)).addTo(pines);
+    }
+    if (!encuadrar) {
+      if (elegido && !map.getBounds().contains([elegido.lat, elegido.lon])) map.panTo([elegido.lat, elegido.lon]);
+      return;
+    }
+    if (locales.length > 1) map.fitBounds(L.latLngBounds(locales.map((x) => [x.lat, x.lon])), { padding: [32, 32], maxZoom: 16 });
+    else if (pts.length) map.setView([pts[0].lat, pts[0].lon], 16);
   }
-  function elegir(i) {
-    const loc = locales[i];
-    if (!loc) return;
+  function elegir(loc) {
     elegido = { ...loc };
-    fijo = true;
     if (loc.direccion) dir.value = loc.direccion;
     if (loc.ciudad) ciu.value = loc.ciudad;
     navigator.vibrate?.(15);
-    pintar();
+    pintarMapa();
   }
   async function buscar() {
     const texto = q.value.trim();
     ctrl?.abort();
-    if (texto.length < 3) { locales = []; pintar(); return; }
+    if (texto.length < 3) { locales = []; msg = ''; pintarMapa(); return; }
     ctrl = new AbortController();
-    res.innerHTML = `<p class="note locres__msg"><span class="mvf__spin" aria-hidden="true"></span> Buscando…</p>`;
+    msg = '<span class="mvf__spin" aria-hidden="true"></span> Buscando…';
+    if (!elegido) pintarSel();
     const s = sesgoBusqueda(ciu.value.trim() || ciudad);
     const qs = new URLSearchParams({ q: texto, ...(s ? { lat: s.lat.toFixed(4), lon: s.lon.toFixed(4) } : {}) });
     try {
       const d = await apiFetch(`/api/lugares/buscar?${qs}`, { signal: ctrl.signal });
       locales = d.locales || [];
-      fijo = false;
-      if (!locales.length) {
-        res.innerHTML = `<p class="note locres__msg">No encontré «${esc(texto)}». Probá con la calle o el barrio, o escribí la dirección abajo.</p>`;
-        pintarMapita();
-        return;
-      }
-      pintar();
+      msg = locales.length ? '' : `No encontré «${esc(texto)}». Probá con la calle o el barrio, o escribí la dirección.`;
+      // Uno solo: es ése.
+      if (locales.length === 1) elegir(locales[0]);
+      pintarMapa(true);
     } catch (e) {
       if (e?.name === 'AbortError' || e.status === 401) return;
       locales = [];
-      res.innerHTML = `<p class="note locres__msg">${esc(e.message)}</p>`;
+      msg = esc(e.message);
+      pintarMapa();
     }
+  }
+  async function armarMapa() {
+    let L;
+    try { L = await cargarLeaflet(); } catch (e) {
+      // Sin mapa: los campos a mano.
+      mapEl.innerHTML = `<div class="mapa__load">${ic('warn', 28)}<span>${esc(e.message)}</span></div>`;
+      hydrateIcons(mapEl);
+      mano.open = true;
+      return;
+    }
+    if (!mapEl.isConnected) return;
+    mapEl.innerHTML = '';
+    const c = elegido || sesgoBusqueda(ciudad) || MAPA_CENTRO;
+    map = L.map(mapEl, { zoomControl: false, attributionControl: true }).setView([c.lat, c.lon], elegido ? 16 : 13);
+    map.attributionControl.setPrefix(false);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+    pines = L.layerGroup().addTo(map);
+    // La hoja entra con una animación: el mapa se acomoda cuando termina.
+    setTimeout(() => map.invalidateSize(), 350);
+    pintarMapa(locales.length > 0);
   }
   q.value = consulta;
   q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, LOCAL_ESPERA_MS); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); buscar(); } });
-  res.addEventListener('click', (e) => { const b = e.target.closest('[data-local]'); if (b) elegir(Number(b.dataset.local)); });
   // Otra calle u otra ciudad escritas a mano ya no son el local elegido: sin su punto (lo busca Georef).
   const aMano = () => {
     if (!elegido) return;
-    if (calleDe(dir.value) !== calleDe(elegido.direccion) || (elegido.ciudad && normQ(ciu.value) !== normQ(elegido.ciudad))) { elegido = null; pintar(); }
+    if (calleDe(dir.value) !== calleDe(elegido.direccion) || (elegido.ciudad && normQ(ciu.value) !== normQ(elegido.ciudad))) { elegido = null; pintarMapa(); }
   };
   dir.addEventListener('input', aMano);
   ciu.addEventListener('input', aMano);
-  // La hoja entra con una animación: el mapa se acomoda cuando termina.
-  setTimeout(() => map?.invalidateSize(), 350);
-  if (consulta.trim().length >= 3) buscar(); else pintarMapita();
+  pintarSel();
+  armarMapa();
+  if (consulta.trim().length >= 3) buscar();
   return {
     punto: () => (elegido && dir.value.trim() ? { lat: elegido.lat, lon: elegido.lon } : null),
     direccion: () => dir.value.trim(),
@@ -1984,7 +1993,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, localRowHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

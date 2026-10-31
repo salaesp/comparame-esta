@@ -98,8 +98,8 @@ precios          id, ticket_id, user_id, lugar_id, fecha, producto_id (null = si
   ser uno sin dirección.
 - **Buscar el local como en Google Maps** (lo pediste así: "que busca el negocio y te lo muestra
   en el mapa, no ponerlo a mano"): en la revisión y en la ficha del lugar se busca el local por
-  nombre y calle, los resultados van en un mapa chico y en una lista, y tocar uno completa la
-  dirección, la ciudad y el punto. La búsqueda es **Photon** (OpenStreetMap, gratis y sin key):
+  nombre y calle, los resultados van como puntos en el mapa (sólo el buscador y el mapa, sin
+  lista: lo pediste así) y tocar uno completa la dirección, la ciudad y el punto. La búsqueda es **Photon** (OpenStreetMap, gratis y sin key):
   Georef sólo sabe de direcciones, no de comercios, y Google Places pide key y facturación. El
   punto elegido se guarda tal cual (es el del local, más preciso que el de la dirección). Si un
   local no está en OpenStreetMap, quedan la dirección y la ciudad para escribirlas, como antes.

@@ -48,9 +48,11 @@ Toda la UI y los textos van en castellano rioplatense.
   en `test/geo.test.mjs` (los tests nunca salen a Georef: `setGeoFetch`).
 - **Buscar el local** (como en Google Maps): en la hoja del lugar de la revisión (`editLugar`) y al
   corregirlo desde su ficha (`openLugarEdit`) la dirección no se escribe: se busca el local
-  (`localBuscadorHtml` + `wireLocalBuscador`, arranca con "cadena + dirección o ciudad"), los
-  resultados van numerados en un mapa chico (`localPinHtml`) y en una lista (`localRowHtml`), y
-  tocar uno completa la dirección, la ciudad y su `lat`/`lon`. `GET /api/lugares/buscar?q=&lat=&lon=`
+  (`localBuscadorHtml` + `wireLocalBuscador`, arranca con "cadena + dirección o ciudad"): **sólo
+  el buscador y el mapa**, sin lista. Los resultados son puntos (`localPinHtml`); tocar uno completa
+  la dirección, la ciudad y su `lat`/`lon`, y debajo del mapa queda cuál es (`localSelHtml`). Con un
+  solo resultado se elige solo. Si no aparece, "¿No aparece? Escribí la dirección" abre los campos
+  (también si el mapa no carga). `GET /api/lugares/buscar?q=&lat=&lon=`
   (`buscarLocales` de `lib/geo.mjs`) le pregunta a **Photon** (photon.komoot.io, OpenStreetMap,
   gratis y sin key), acotado a Argentina y sesgado hacia donde estás o hacia tus lugares de esa
   ciudad (`sesgoBusqueda`). El punto elegido viaja con el lugar (`POST /api/tickets`,

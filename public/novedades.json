@@ -1,5 +1,12 @@
 [
   {
+    "version": "next",
+    "fecha": "",
+    "notas": [
+      "Buscar el local es más simple: el buscador y el mapa. Tocás tu local en el mapa y listo; si no aparece, «Escribí la dirección»."
+    ]
+  },
+  {
     "version": "0.5.0",
     "fecha": "2026-10-31",
     "notas": [
