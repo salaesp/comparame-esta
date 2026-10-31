@@ -93,6 +93,31 @@ test('corregir un lugar desde su ficha: sólo quien cargó ahí; con una direcci
   assert.equal(f.lugarId, cabildo);
 });
 
+test('cambiar el lugar de un ticket: a uno que ya existe, corrigiendo el lugar si es su único ticket, o a uno nuevo', async () => {
+  const tk = async (lugarId) => (await db.sql('select id from tickets where lugar_id = ?1 order by created_at desc limit 1', [lugarId]))[0].id;
+  // Un Día sin dirección, con un solo ticket: se le corrige el lugar ahí mismo (con el punto elegido).
+  const dia = await cargar(ana, { cadena: 'Día', cuit: null, punto_venta: '0555' });
+  const t1 = await tk(dia.lugarId);
+  assert.equal((await pedir(worker, beto, 'PATCH', `/api/tickets/${t1}`, { lugar: { cadena: 'Día', direccion: 'Medrano 1235' } })).status, 404);
+  assert.equal((await pedir(worker, ana, 'PATCH', `/api/tickets/${t1}`, { lugar: { cadena: 'Día' } })).status, 422);
+  const r1 = await pedir(worker, ana, 'PATCH', `/api/tickets/${t1}`, { lugar: { cadena: 'Día', direccion: 'Avenida Medrano 1235', ciudad: 'CABA', lat: -34.6, lon: -58.42 } });
+  assert.equal(r1.status, 200);
+  assert.equal(r1.data.lugar_id, dia.lugarId);
+  const l1 = await lugar(dia.lugarId);
+  assert.deepEqual([l1.direccion, l1.ciudad, l1.lat], ['Avenida Medrano 1235', 'CABA', -34.6]);
+  // Otro ticket de Día, mal reconocido en ese local: pasa a uno nuevo y el de Medrano queda igual.
+  const otro = await cargar(ana, { cadena: 'Día', cuit: null, punto_venta: '0555' });
+  assert.equal(otro.lugarId, dia.lugarId);
+  const t2 = await tk(dia.lugarId);
+  const r2 = await pedir(worker, ana, 'PATCH', `/api/tickets/${t2}`, { lugar: { cadena: 'Día', direccion: 'Rivadavia 7850', ciudad: 'CABA' } });
+  assert.notEqual(r2.data.lugar_id, dia.lugarId);
+  assert.equal((await lugar(dia.lugarId)).direccion, 'Avenida Medrano 1235');
+  assert.equal((await db.sql('select count(*) as n from precios where ticket_id = ?1 and lugar_id = ?2', [t2, r2.data.lugar_id]))[0].n, 1);
+  // Y de vuelta a Medrano: encuentra el que ya existe (no crea otro).
+  const r3 = await pedir(worker, ana, 'PATCH', `/api/tickets/${t2}`, { lugar: { cadena: 'Día', direccion: 'Avenida Medrano 1235' } });
+  assert.equal(r3.data.lugar_id, dia.lugarId);
+});
+
 test('una base de antes de la 0.3.0: suma las columnas y las claves de los lugares que ya estaban', async () => {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(`create table lugares (id text primary key, cadena text not null default '', sucursal text not null default '',

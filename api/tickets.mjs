@@ -2,6 +2,7 @@
 //   POST   /api/tickets/leer {fotos, hoy} -> lo que Claude leyó, cruzado con el catálogo (no guarda nada)
 //   POST   /api/tickets {fecha, lugar, total, renglones, …} -> guarda el ticket revisado
 //   GET    /api/tickets/:id    -> un ticket con sus renglones (tuyo o de un amigo)
+//   PATCH  /api/tickets/:id {lugar} -> le cambia el lugar a uno tuyo (lib/catalogo.mjs moverTicketStmts)
 //   DELETE /api/tickets/:id    -> borra uno tuyo
 import Anthropic from '@anthropic-ai/sdk';
 import { json, error, readJson, segs } from '../lib/http.mjs';
@@ -9,8 +10,8 @@ import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { visibles } from '../lib/amigos.mjs';
 import { fotosError, leerTicket, lectorConfig, costoUsd } from '../lib/lector.mjs';
-import { validarTicket } from '../lib/ticket.mjs';
-import { cruzarLectura, guardarStmts } from '../lib/catalogo.mjs';
+import { validarTicket, lugarLimpio } from '../lib/ticket.mjs';
+import { cruzarLectura, guardarStmts, moverTicketStmts } from '../lib/catalogo.mjs';
 import { ubicarLugares, enSegundoPlano } from '../lib/geo.mjs';
 
 export default async function (req, env, ctx) {
@@ -20,6 +21,7 @@ export default async function (req, env, ctx) {
   if (s2 === 'leer' && !s3 && req.method === 'POST') return leer(req, me.userId);
   if (!s2 && req.method === 'POST') return guardar(req, me.userId, ctx);
   if (s2 && !s3 && req.method === 'GET') return uno(me.userId, s2);
+  if (s2 && !s3 && req.method === 'PATCH') return cambiarLugar(req, me.userId, s2, ctx);
   if (s2 && !s3 && req.method === 'DELETE') return borrar(me.userId, s2);
   return error('método no permitido', 405);
 }
@@ -81,6 +83,15 @@ async function guardar(req, userId, ctx) {
   // El punto en el mapa del lugar (si es nuevo o le cambió la dirección), sin hacer esperar.
   await enSegundoPlano(ctx, ubicarLugares([g.lugarId]));
   return json({ ok: true, id: g.ticketId }, 201);
+}
+
+async function cambiarLugar(req, userId, id, ctx) {
+  const b = await readJson(req);
+  const m = await moverTicketStmts(userId, id, lugarLimpio(b?.lugar || {}));
+  if (m.error) return error(m.error, m.status);
+  if (m.stmts.length) await txBatch(m.stmts);
+  await enSegundoPlano(ctx, ubicarLugares([m.lugarId]));
+  return json({ ok: true, lugar_id: m.lugarId });
 }
 
 async function uno(userId, id) {

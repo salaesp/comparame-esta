@@ -1238,6 +1238,8 @@ async function openTicket(id) {
   let t = state.tickets.find((x) => x.id === id);
   let renglones = state.precios.filter((pr) => pr.ticket_id === id).sort((a, b) => a.orden - b.orden);
   const paint = () => {
+    // Después de un reload (cambiarle el lugar), el de ahora.
+    t = state.tickets.find((x) => x.id === id) || t;
     if (!t) return `${modalHead('Ticket')}<p class="note">No encontré el ticket.</p>`;
     const l = lugarDe(t.lugar_id);
     const mio = t.user_id === state.user.id;
@@ -1245,6 +1247,14 @@ async function openTicket(id) {
       <div class="prodhero"><span class="lbl">Se pagó</span><span class="prodhero__amt">${fmtMoney(t.pagado)}</span>
         <span class="prodhero__sub">${t.n_renglones} productos${t.total && Math.abs(t.total - t.pagado) > 1 ? ` · el ticket dice ${fmtMoney(t.total)}` : ''}</span>
         ${mio ? gzBotonHtml(t) : ''}</div>
+      <div class="gcard">
+        <button type="button" class="mrow txrow" ${mio ? `data-ticket-lugar="${esc(t.id)}" data-lugar-id="${esc(t.lugar_id || '')}"` : l ? `data-lugar="${esc(l.id)}"` : 'disabled'}>
+          ${lugarIc(l)}
+          <span class="mrow__text"><span class="mrow__title">${esc(l ? lugarNombre(l) : 'Sin lugar')}</span>
+            <span class="row__meta"><span class="movchips">${l && !l.direccion ? '<span class="chip chip--neg">Sin dirección</span>' : ''}${lugarDonde(l) ? `<span class="chip">${esc(lugarDonde(l))}</span>` : ''}</span></span></span>
+          ${mio ? `<span class="mrow__right">${ic('edit', 18)}</span>` : ''}
+        </button>
+      </div>
       <div class="gcard">${renglones.map((pr) => {
         const p = state.productos.get(pr.producto_id);
         return `<button type="button" class="mrow txrow" ${p ? `data-producto="${esc(p.id)}"` : 'disabled'}>
@@ -1502,41 +1512,89 @@ function volverAPoner(k) {
   editRenglon(kk);
 }
 
+// El comercio, el buscador del local y la sucursal: la hoja del lugar de la revisión y la de
+// cambiar el lugar de un ticket ya guardado. valores() → el lugar, o null si falta algo.
+function lugarFormHtml(p, l, hint) {
+  return `<div class="accf">
+      <label class="accf__field"><span>Comercio</span><input type="text" id="${p}-cadena" value="${esc(l.cadena || '')}" maxlength="60" placeholder="Carrefour, Coto, Día…"></label>
+    </div>
+    ${localBuscadorHtml(p, l)}
+    <div class="accf">
+      <label class="accf__field"><span>Sucursal</span><input type="text" id="${p}-sucursal" value="${esc(l.sucursal || '')}" maxlength="60" placeholder="Opcional"></label>
+      <p class="accf__hint">${hint}</p>
+    </div>`;
+}
+function wireLugarForm(el, p, l) {
+  const cad = el.querySelector(`#${p}-cadena`);
+  const consulta = () => [cad.value.trim(), l.direccion || l.ciudad].filter(Boolean).join(' ');
+  const bus = wireLocalBuscador(el, p, { consulta: consulta(), inicial: l, ciudad: l.ciudad || '' });
+  // Con el comercio cambiado y la búsqueda sin tocar, se busca el nuevo.
+  const lq = el.querySelector(`#${p}-lq`);
+  let previa = lq.value;
+  cad.addEventListener('change', () => {
+    if (lq.value !== previa) return;
+    lq.value = previa = consulta();
+    lq.dispatchEvent(new Event('input'));
+  });
+  return {
+    valores() {
+      const cadena = cad.value.trim();
+      if (!cadena) { toast('Falta el nombre del comercio.', { icon: 'error' }); return null; }
+      const punto = bus.punto();
+      return { cadena, sucursal: el.querySelector(`#${p}-sucursal`).value.trim(), direccion: bus.direccion(), ciudad: bus.ciudad(), lat: punto?.lat ?? null, lon: punto?.lon ?? null };
+    },
+  };
+}
+
 function editLugar() {
   const l = rev.lugar;
   const sh = openSheet({
     title: 'El lugar',
-    body: `<div class="accf">
-      <label class="accf__field"><span>Comercio</span><input type="text" id="lg-cadena" value="${esc(l.cadena || '')}" maxlength="60" placeholder="Carrefour, Coto, Día…"></label>
-    </div>
-    ${localBuscadorHtml('lg', l)}
-    <div class="accf">
-      <label class="accf__field"><span>Sucursal</span><input type="text" id="lg-sucursal" value="${esc(l.sucursal || '')}" maxlength="60" placeholder="Opcional"></label>
-      <p class="accf__hint">Con la dirección se distingue una sucursal de otra.${l.punto_venta ? ` Sin ella, la reconozco por el punto de venta del ticket (${esc(pvLabel(l.punto_venta))}).` : ''}</p>
-    </div>`,
+    body: lugarFormHtml('lg', l, `Con la dirección se distingue una sucursal de otra.${l.punto_venta ? ` Sin ella, la reconozco por el punto de venta del ticket (${esc(pvLabel(l.punto_venta))}).` : ''}`),
     foot: '<button type="button" class="mvf__submit" id="lg-ok">Listo</button>',
     onMount: (el) => {
-      const consulta = () => [el.querySelector('#lg-cadena').value.trim(), l.direccion || l.ciudad].filter(Boolean).join(' ');
-      const bus = wireLocalBuscador(el, 'lg', { consulta: consulta(), inicial: l, ciudad: l.ciudad || '' });
-      // Con el comercio cambiado y la búsqueda sin tocar, se busca el nuevo.
-      const lq = el.querySelector('#lg-lq');
-      let previa = lq.value;
-      el.querySelector('#lg-cadena').addEventListener('change', () => {
-        if (lq.value !== previa) return;
-        lq.value = previa = consulta();
-        lq.dispatchEvent(new Event('input'));
-      });
+      const form = wireLugarForm(el, 'lg', l);
       el.querySelector('#lg-ok').addEventListener('click', () => {
-        const cadena = el.querySelector('#lg-cadena').value.trim();
-        if (!cadena) { toast('Falta el nombre del comercio.', { icon: 'error' }); return; }
-        const punto = bus.punto();
-        const nuevo = { cadena, sucursal: el.querySelector('#lg-sucursal').value.trim(), direccion: bus.direccion(), ciudad: bus.ciudad(), lat: punto?.lat ?? null, lon: punto?.lon ?? null };
+        const nuevo = form.valores();
+        if (!nuevo) return;
         // Otro comercio u otra dirección ya no es el lugar que se encontró: el server lo busca
         // o lo crea. La sucursal o la ciudad sólo le completan lo que no tenga.
         const otro = nuevo.cadena !== l.cadena || nuevo.direccion !== (l.direccion || '');
         rev.lugar = { ...l, ...nuevo, ...(otro ? { id: undefined, existe: false } : {}) };
         sh.close();
         repaintModal();
+      });
+    },
+  });
+}
+
+// Cambiar el lugar de un ticket ya guardado (PATCH /api/tickets/:id): el que se reconoció en
+// otra sucursal, o el que quedó sin dirección. Cambia sólo este ticket; si era el único del
+// lugar, el server corrige el lugar (lib/catalogo.mjs moverTicketStmts).
+function openTicketLugar(id, lugarId = '') {
+  const l = lugarDe(state.tickets.find((x) => x.id === id)?.lugar_id || lugarId) || {};
+  const sh = openSheet({
+    title: '¿Dónde fue?',
+    body: lugarFormHtml('tl', l, 'Cambia el lugar de este ticket y sus precios. Para corregir el lugar en todos sus tickets, hacelo desde su ficha.'),
+    foot: '<button type="button" class="mvf__submit" id="tl-ok">Guardar</button>',
+    onMount: (el) => {
+      const form = wireLugarForm(el, 'tl', l);
+      const btn = el.querySelector('#tl-ok');
+      btn.addEventListener('click', async () => {
+        const lugar = form.valores();
+        if (!lugar) return;
+        if (!lugar.direccion) { toast('Falta la dirección: buscá el local o escribila.', { icon: 'error' }); return; }
+        btn.classList.add('mvf__submit--busy'); btn.disabled = true;
+        try {
+          await apiFetch(`/api/tickets/${encodeURIComponent(id)}`, { method: 'PATCH', body: { lugar } });
+          sh.close();
+          await reload();
+          repaintModal();
+          toast('✓ Lugar del ticket cambiado');
+        } catch (e) {
+          btn.classList.remove('mvf__submit--busy'); btn.disabled = false;
+          if (e.status !== 401) toast(e.message, { icon: 'error' });
+        }
       });
     },
   });
@@ -1834,6 +1892,8 @@ document.addEventListener('click', (e) => {
   // El link a Gastienzos se abre solo (es un <a>); acá sólo se anota que se mandó.
   const gz = t.closest('[data-gz]');
   if (gz) { gzMarcar(gz.dataset.gz); setTimeout(repaintModal, 300); return; }
+  const tl = t.closest('[data-ticket-lugar]');
+  if (tl) { openTicketLugar(tl.dataset.ticketLugar, tl.dataset.lugarId); return; }
   const td = t.closest('[data-ticket-del]');
   if (td) { deleteTicket(td.dataset.ticketDel); return; }
   const pe = t.closest('[data-prod-edit]');
@@ -1924,7 +1984,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, mapPinHtml, mapaRowHtml, localRowHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, localRowHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

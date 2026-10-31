@@ -56,6 +56,12 @@ Toda la UI y los textos van en castellano rioplatense.
   ciudad (`sesgoBusqueda`). El punto elegido viaja con el lugar (`POST /api/tickets`,
   `PATCH /api/lugares/:id`; `puntoValido`) y se guarda tal cual, sin Georef. Cambiar a mano la
   calle o la ciudad le saca el punto (lo busca Georef); la altura, no. Tests en `test/geo.test.mjs`.
+- **Cambiar el lugar de un ticket**: la ficha de un ticket muestra su lugar y, si es tuyo, tocarlo
+  abre "¿Dónde fue?" (`openTicketLugar`, el mismo formulario: `lugarFormHtml`/`wireLugarForm`).
+  `PATCH /api/tickets/:id {lugar}` (`moverTicketStmts` de `lib/catalogo.mjs`, pide la dirección):
+  si con esa dirección ya hay un lugar, el ticket y sus precios pasan a ése; si no y era el único
+  ticket del lugar, corrige el lugar ahí mismo; si no, crea uno nuevo. Los otros tickets del lugar
+  viejo no cambian (para eso, "Corregir el lugar" en su ficha). Test en `test/lugares.test.mjs`.
 - **La pantalla Mapa** (`mapaHtml`, cuarta de la barra): los lugares con punto en un mapa de
   **OpenStreetMap con Leaflet** 1.9.4 (de cdnjs, con integrity, cargado recién al abrirla:
   `cargarLeaflet`; en oscuro los mosaicos van invertidos con un filtro). Cada punto
