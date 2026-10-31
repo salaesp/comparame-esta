@@ -152,6 +152,7 @@
    tapen la barra ni las hojas. */
 .mapa__top { display: flex; flex-direction: column; gap: var(--sp-2); }
 .mapa__sug { padding-block: 4px; }
+.mapa__sugt { display: block; padding: var(--sp-2) var(--sp-4) 2px; color: var(--muted); font-size: var(--t-label); font-weight: 600; }
 .mapa__sel { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 8px 6px var(--sp-4);
   border-radius: var(--r-full); background: var(--card); }
 .mapa__selname { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

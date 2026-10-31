@@ -1,5 +1,12 @@
 [
   {
+    "version": "next",
+    "fecha": "",
+    "notas": [
+      "El buscador del Mapa ahora también busca locales: tus lugares y cualquier comercio que esté en el mapa, para ver dónde queda."
+    ]
+  },
+  {
     "version": "0.5.1",
     "fecha": "2026-10-31",
     "notas": [

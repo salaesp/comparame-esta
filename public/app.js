@@ -1034,7 +1034,11 @@ function cargarLeaflet() {
 }
 // map: el de Leaflet; pos: dónde estás ({ lat, lon }, si diste permiso); prod: el producto buscado.
 // foco: el lugar que se abrió desde su ficha ("Ver en el mapa"), para centrarlo.
-const mapa = { map: null, pines: null, yo: null, pos: null, prod: '', q: '', centrado: false, foco: '' };
+// local: el local de OpenStreetMap elegido en el buscador (uno que no es de tus lugares);
+// locales: lo que contestó /api/lugares/buscar para mapa.q (locQ), o 'buscando' / 'error'.
+const mapa = { map: null, pines: null, yo: null, pos: null, prod: '', q: '', centrado: false, foco: '', local: null, locales: [], locQ: '', locEstado: '' };
+// Un local de OpenStreetMap que cae a menos de esto de uno de tus lugares es ése.
+const MISMO_LOCAL_M = 80;
 const ubicado = (l) => l && Number.isFinite(l.lat) && Number.isFinite(l.lon);
 // Metros entre dos puntos (lib/geo.mjs metros).
 function metros(a, b) {
@@ -1101,7 +1105,7 @@ function mapaHtml() {
     </div>
     <div id="mapa-list">${mapaListHtml()}</div>`;
 }
-// Arriba: el buscador de productos o, con uno elegido, cuál es y cómo sacarlo.
+// Arriba: el buscador o, con un producto o un local elegido, cuál es y cómo sacarlo.
 function mapaTopHtml() {
   const p = mapa.prod && state.productos.get(mapa.prod);
   if (p) {
@@ -1109,23 +1113,69 @@ function mapaTopHtml() {
       <span class="mapa__selname">${esc(productoNombre(p))}${productoSub(p) ? ` <span class="prod__medida">${esc(productoSub(p))}</span>` : ''}</span>
       <button type="button" class="modal__x" data-mapa-prod="" aria-label="Ver todos los lugares">✕</button></div>`;
   }
-  return `<label class="buscador"><span class="sr-only">Buscar un producto en el mapa</span>${ic('search', 20)}
-      <input type="search" id="mapa-q" placeholder="¿Dónde está más barato…?" autocomplete="off" value="${esc(mapa.q)}"></label>
+  if (mapa.local) {
+    const loc = mapa.local;
+    const donde = [loc.nombre !== loc.direccion ? loc.direccion : '', loc.ciudad].filter(Boolean).join(', ');
+    return `<div class="mapa__sel"><span class="mrow__ic" aria-hidden="true">${ic('pin', 20)}</span>
+      <span class="mapa__selname">${esc(loc.nombre)}${donde ? ` <span class="prod__medida">${esc(donde)}</span>` : ''}</span>
+      <button type="button" class="modal__x" data-mapa-local="" aria-label="Ver todos los lugares">✕</button></div>`;
+  }
+  return `<label class="buscador"><span class="sr-only">Buscar un producto o un local en el mapa</span>${ic('search', 20)}
+      <input type="search" id="mapa-q" placeholder="Buscá un producto o un local" autocomplete="off" enterkeyhint="search" value="${esc(mapa.q)}"></label>
     <div class="gcard mapa__sug" id="mapa-sug"${mapa.q.trim() ? '' : ' hidden'}>${mapaSugHtml()}</div>`;
 }
-// Los productos que coinciden y tienen algún lugar en el mapa.
+// El lugar tuyo (con punto) que está en ese mismo lugar del mapa, si hay.
+function lugarCerca(loc) {
+  let mejor = null, d = MISMO_LOCAL_M;
+  for (const l of state.lugares.values()) {
+    if (!ubicado(l)) continue;
+    const m = metros(l, loc);
+    if (m <= d) { mejor = l; d = m; }
+  }
+  return mejor;
+}
+// Lo que coincide con lo escrito: los productos con algún lugar en el mapa, tus lugares
+// (por la cadena, la sucursal, la dirección o la ciudad) y los locales de OpenStreetMap
+// (los que son uno de tus lugares van con ellos).
 function mapaSugHtml() {
   const words = normQ(mapa.q).split(/\s+/).filter(Boolean);
   if (!words.length) return '';
-  const rows = resumenProductos()
+  const coincide = (t) => words.every((w) => normQ(t).includes(w));
+  const prods = resumenProductos()
     .filter((r) => r.lugares.some((x) => ubicado(lugarDe(x.lugar_id))))
-    .filter((r) => { const t = normQ(`${r.producto.marca} ${r.producto.nombre} ${productoSub(r.producto)}`); return words.every((w) => t.includes(w)); })
-    .slice(0, 8);
-  if (!rows.length) return `<p class="note">No hay ningún producto con «${esc(mapa.q)}» en lugares del mapa.</p>`;
-  return rows.map((r) => `<button type="button" class="mrow txrow row--solo" data-mapa-prod="${esc(r.producto.id)}">
+    .filter((r) => coincide(`${r.producto.marca} ${r.producto.nombre} ${productoSub(r.producto)}`))
+    .slice(0, 6);
+  const mios = [...state.lugares.values()].filter((l) => ubicado(l) && coincide(`${l.cadena} ${l.sucursal} ${l.direccion} ${l.ciudad}`));
+  const actuales = mapa.locQ === mapa.q.trim() && Array.isArray(mapa.locales) ? mapa.locales : [];
+  const ajenos = [];
+  actuales.forEach((loc, i) => {
+    const l = lugarCerca(loc);
+    if (l) { if (!mios.includes(l)) mios.push(l); } else ajenos.push([loc, i]);
+  });
+  const dist = (x) => (mapa.pos ? `<span class="chip chip--dist">${esc(distLabel(metros(mapa.pos, x)))}</span>` : '');
+  const prodHtml = prods.map((r) => `<button type="button" class="mrow txrow row--solo" data-mapa-prod="${esc(r.producto.id)}">
     <span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
     <span class="mrow__text"><span class="mrow__title">${esc(productoNombre(r.producto))}${productoSub(r.producto) ? ` <span class="prod__medida">${esc(productoSub(r.producto))}</span>` : ''}</span></span>
   </button>`).join('');
+  const miosHtml = mios.slice(0, 6).map((l) => `<button type="button" class="mrow txrow" data-mapa-lugar="${esc(l.id)}">
+    ${lugarIc(l)}
+    <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
+      <span class="row__meta"><span class="movchips">${dist(l)}${lugarDonde(l) ? `<span class="chip">${esc(lugarDonde(l))}</span>` : ''}</span></span></span>
+  </button>`).join('');
+  const ajenosHtml = ajenos.slice(0, 6).map(([loc, i]) => {
+    const donde = [loc.nombre !== loc.direccion ? loc.direccion : '', loc.ciudad].filter(Boolean).join(', ');
+    return `<button type="button" class="mrow txrow" data-mapa-local="${i}">
+    <span class="mrow__ic" aria-hidden="true">${ic('pin', 20)}</span>
+    <span class="mrow__text"><span class="mrow__title">${esc(loc.nombre)}</span>
+      <span class="row__meta"><span class="movchips">${dist(loc)}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}</span></span></span>
+  </button>`;
+  }).join('');
+  const buscando = mapa.q.trim().length >= 3 && (mapa.locQ !== mapa.q.trim() || mapa.locEstado === 'buscando');
+  const estado = buscando ? '<p class="note locsel__msg"><span class="mvf__spin" aria-hidden="true"></span> Buscando locales…</p>'
+    : mapa.locEstado === 'error' ? '<p class="note">No pude buscar locales. Probá de nuevo.</p>' : '';
+  const sec = (t, h) => (h ? `<span class="mapa__sugt">${t}</span>${h}` : '');
+  const html = sec('Productos', prodHtml) + sec('Tus lugares', miosHtml) + sec('Otros locales', ajenosHtml) + estado;
+  return html || `<p class="note">No encontré nada con «${esc(mapa.q)}».</p>`;
 }
 function mapaListHtml() {
   const pts = mapaPuntos();
@@ -1182,13 +1232,19 @@ function pintarMapa() {
       title: lugarNombre(pt.l), keyboard: true, riseOnHover: true,
     }).on('click', () => openLugar(pt.l.id)).addTo(mapa.pines);
   }
+  if (mapa.local) {
+    L.marker([mapa.local.lat, mapa.local.lon], {
+      icon: L.divIcon({ className: 'mpin-wrap', html: localPinHtml({ elegido: true }), iconSize: null }),
+      title: [mapa.local.nombre, mapa.local.direccion].filter(Boolean).join(', '), keyboard: true, zIndexOffset: 1000,
+    }).addTo(mapa.pines);
+  }
   mapa.yo?.remove();
   mapa.yo = mapa.pos ? L.circleMarker([mapa.pos.lat, mapa.pos.lon], { radius: 8, weight: 3, className: 'mapa__yopt' }).addTo(mapa.map) : null;
   if (!mapa.centrado) centrarMapa(pts);
 }
 function centrarMapa(pts) {
   const L = window.L;
-  const foco = mapa.foco && lugarDe(mapa.foco);
+  const foco = (mapa.foco && lugarDe(mapa.foco)) || mapa.local;
   if (ubicado(foco)) {
     mapa.map.setView([foco.lat, foco.lon], 16);
   } else if (mapa.pos) {
@@ -1200,26 +1256,79 @@ function centrarMapa(pts) {
   } else return;
   mapa.centrado = true;
 }
+function pintarSugMapa() {
+  const sug = $('mapa-sug');
+  if (!sug) return;
+  sug.hidden = !mapa.q.trim();
+  sug.innerHTML = mapaSugHtml();
+  hydrateIcons(sug);
+}
+// Los locales de OpenStreetMap para lo escrito, sesgados hacia lo que se está mirando.
+let _mapaLocTimer = 0, _mapaLocCtrl = null;
+async function buscarLocalesMapa() {
+  const texto = mapa.q.trim();
+  _mapaLocCtrl?.abort();
+  if (texto.length < 3) { mapa.locales = []; mapa.locQ = texto; mapa.locEstado = ''; pintarSugMapa(); return; }
+  _mapaLocCtrl = new AbortController();
+  mapa.locEstado = 'buscando';
+  const c = mapa.map ? mapa.map.getCenter() : null;
+  const s = mapa.pos || (c ? { lat: c.lat, lon: c.lng } : sesgoBusqueda(state.ciudad));
+  const qs = new URLSearchParams({ q: texto, ...(s ? { lat: s.lat.toFixed(4), lon: s.lon.toFixed(4) } : {}) });
+  try {
+    const d = await apiFetch(`/api/lugares/buscar?${qs}`, { signal: _mapaLocCtrl.signal });
+    mapa.locales = d.locales || [];
+    mapa.locEstado = '';
+  } catch (e) {
+    if (e?.name === 'AbortError') return;
+    mapa.locales = [];
+    mapa.locEstado = 'error';
+  }
+  mapa.locQ = texto;
+  pintarSugMapa();
+}
 function wireMapaQ() {
   const q = $('mapa-q');
   q.addEventListener('input', () => {
     mapa.q = q.value;
-    const sug = $('mapa-sug');
-    sug.hidden = !mapa.q.trim();
-    sug.innerHTML = mapaSugHtml();
-    hydrateIcons(sug);
+    pintarSugMapa();
+    clearTimeout(_mapaLocTimer);
+    _mapaLocTimer = setTimeout(buscarLocalesMapa, LOCAL_ESPERA_MS);
   });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(_mapaLocTimer); buscarLocalesMapa(); } });
+}
+// Uno de tus lugares desde el buscador: el mapa centrado en él (tocar su punto abre la ficha).
+function elegirLugarMapa(id) {
+  mapa.foco = id;
+  mapa.prod = '';
+  mapa.local = null;
+  mapa.q = '';
+  mapa.centrado = false;
+  document.activeElement?.blur();
+  pintarMapa();
+}
+// Un local de OpenStreetMap que no es de tus lugares: su punto en el mapa, arriba cuál es.
+// i = '' lo saca.
+function elegirLocalMapa(i) {
+  mapa.local = i === '' ? null : mapa.locales[Number(i)] || null;
+  mapa.foco = '';
+  mapa.prod = '';
+  if (mapa.local) mapa.q = '';
+  mapa.centrado = false;
+  document.activeElement?.blur();
+  pintarMapa();
 }
 // "Ver en el mapa" de la ficha de un lugar: la pantalla Mapa centrada en él.
 function verEnMapa(id) {
   mapa.foco = id;
   mapa.prod = '';
+  mapa.local = null;
   mapa.centrado = false;
   closeLayer();
   showView('mapa');
 }
 function elegirProductoMapa(pid) {
   mapa.foco = '';
+  mapa.local = null;
   mapa.prod = pid;
   mapa.q = '';
   mapa.centrado = false;
@@ -1886,6 +1995,10 @@ document.addEventListener('click', (e) => {
   if (prod && prod.dataset.producto) { openProducto(prod.dataset.producto); return; }
   const tk = t.closest('[data-ticket]');
   if (tk) { openTicket(tk.dataset.ticket); return; }
+  const ml = t.closest('[data-mapa-lugar]');
+  if (ml) { elegirLugarMapa(ml.dataset.mapaLugar); return; }
+  const mlo = t.closest('[data-mapa-local]');
+  if (mlo) { elegirLocalMapa(mlo.dataset.mapaLocal); return; }
   const mp = t.closest('[data-mapa-prod]');
   if (mp) { elegirProductoMapa(mp.dataset.mapaProd); return; }
   if (t.closest('[data-mapa-yo]')) { ubicarme(); return; }

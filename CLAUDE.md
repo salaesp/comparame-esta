@@ -72,7 +72,11 @@ Toda la UI y los textos van en castellano rioplatense.
   ficha del lugar. Debajo, la misma lista (`mapaRowHtml`) y, con un producto, "No están en el
   mapa" con sus lugares sin punto. **Cerca mío** pide el GPS (`ubicarme`; si el permiso ya está
   dado, centra solo) y ordena por distancia. "Ver en el mapa" de la ficha de un lugar abre esta
-  pantalla centrada en él (`verEnMapa`).
+  pantalla centrada en él (`verEnMapa`). El buscador de arriba (`mapaSugHtml`) busca productos
+  (los que tienen algún lugar en el mapa), **tus lugares** (`elegirLugarMapa`: centra el mapa en él)
+  y **otros locales** de OpenStreetMap (`buscarLocalesMapa`, el mismo `/api/lugares/buscar`,
+  sesgado hacia donde estás o lo que se está mirando; `elegirLocalMapa` pone su punto y arriba cuál
+  es). Un local a menos de `MISMO_LOCAL_M` (80 m) de uno de tus lugares va como ése (`lugarCerca`).
 - **Mandar a Gastienzos**: en la ficha de un ticket propio (`gzBotonHtml`) y como acción del toast al
   guardarlo, un link a `https://gastienzos.com.ar/app?add=1&monto=&titulo=&fecha=` (`gastienzosUrl`:
   lo pagado, la cadena, la fecha) que abre el alta de Gastienzos completada (allá lo lee
