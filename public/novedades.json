@@ -1,7 +1,7 @@
 [
   {
-    "version": "next:minor",
-    "fecha": "",
+    "version": "0.5.0",
+    "fecha": "2026-10-31",
     "notas": [
       "El lugar del ticket se busca como en Google Maps: escribís «Carrefour Cabildo», ves los locales en un mapa y tocás el tuyo. La dirección, la ciudad y el punto en el mapa se completan solos.",
       "Lo mismo para ponerle o corregirle la dirección a un lugar desde su ficha.",
