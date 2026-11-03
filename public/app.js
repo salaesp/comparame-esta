@@ -1033,10 +1033,11 @@ function cargarLeaflet() {
   return _leaflet;
 }
 // map: el de Leaflet; pos: dónde estás ({ lat, lon }, si diste permiso); prod: el producto buscado.
+// prods: los productos elegidos (uno o varios: «todas las aguas»).
 // foco: el lugar que se abrió desde su ficha ("Ver en el mapa"), para centrarlo.
 // local: el local de OpenStreetMap elegido en el buscador (uno que no es de tus lugares);
 // locales: lo que contestó /api/lugares/buscar para mapa.q (locQ), o 'buscando' / 'error'.
-const mapa = { map: null, pines: null, yo: null, pos: null, prod: '', q: '', centrado: false, foco: '', local: null, locales: [], locQ: '', locEstado: '' };
+const mapa = { map: null, pines: null, yo: null, pos: null, prods: [], q: '', centrado: false, foco: '', local: null, locales: [], locQ: '', locEstado: '' };
 // Un local de OpenStreetMap que cae a menos de esto de uno de tus lugares es ése.
 const MISMO_LOCAL_M = 80;
 const ubicado = (l) => l && Number.isFinite(l.lat) && Number.isFinite(l.lon);
@@ -1048,32 +1049,47 @@ function metros(a, b) {
 }
 const distLabel = (m) => (m < 1000 ? `a ${Math.round(m / 10) * 10} m` : `a ${(Math.round(m / 100) / 10).toLocaleString('es-AR')} km`);
 
-// Lo que va en el mapa: cada lugar ubicado ({ l, precio, fresco, dist }); con un producto,
-// sólo los que lo tienen, del más barato al más caro (los viejos al final); sin él, del más
-// cerca al más lejos si se sabe dónde estás.
+// Con productos elegidos, cada lugar con el más barato de ellos ({ lugar_id, precio, fresco,
+// base }), del más barato al más caro (los viejos al final). Se compara por la forma más común
+// entre ellos (el litro, el kg…): base = false es uno que va por otra (c/u) y queda después.
+function mapaPorLugar() {
+  if (!mapa.prods.length) return [];
+  const sel = new Set(mapa.prods);
+  const todos = resumenProductos().filter((r) => sel.has(r.producto.id)).flatMap((r) => r.lugares.filter((x) => x.lugar_id));
+  const forma = (x) => porQue(x.precio, state.productos.get(x.precio.producto_id));
+  const cuenta = new Map();
+  for (const x of todos) cuenta.set(forma(x), (cuenta.get(forma(x)) || 0) + 1);
+  const base = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const orden = (a, b) => (b.fresco - a.fresco) || (b.base - a.base) || (comparable(a.precio) - comparable(b.precio));
+  const by = new Map();
+  for (const x of todos) {
+    const y = { ...x, base: forma(x) === base };
+    if (!by.has(x.lugar_id) || orden(y, by.get(x.lugar_id)) < 0) by.set(x.lugar_id, y);
+  }
+  return [...by.values()].sort(orden);
+}
+// Lo que va en el mapa: cada lugar ubicado ({ l, precio, fresco, dist }); con productos,
+// sólo los que tienen alguno, del más barato al más caro; sin ellos, del más cerca al más
+// lejos si se sabe dónde estás.
 function mapaPuntos() {
   const dist = (l) => (mapa.pos ? metros(mapa.pos, l) : null);
-  if (mapa.prod) {
-    const r = resumenProductos().find((x) => x.producto.id === mapa.prod);
-    return (r?.lugares || []).map((x) => ({ l: lugarDe(x.lugar_id), precio: x.precio, fresco: x.fresco }))
+  if (mapa.prods.length) {
+    return mapaPorLugar().map((x) => ({ l: lugarDe(x.lugar_id), precio: x.precio, fresco: x.fresco }))
       .filter((x) => ubicado(x.l)).map((x) => ({ ...x, dist: dist(x.l) }));
   }
   const pts = [...state.lugares.values()].filter(ubicado).map((l) => ({ l, precio: null, fresco: true, dist: dist(l) }));
   return pts.sort((a, b) => (a.dist ?? 0) - (b.dist ?? 0) || lugarNombre(a.l).localeCompare(lugarNombre(b.l)));
 }
-// Con un producto, sus lugares sin punto en el mapa (sin dirección o no encontrada): van
+// Con productos, sus lugares sin punto en el mapa (sin dirección o no encontrada): van
 // en la lista, porque el más barato puede ser uno de ésos.
 function mapaSinPunto() {
-  if (!mapa.prod) return [];
-  const r = resumenProductos().find((x) => x.producto.id === mapa.prod);
-  return (r?.lugares || []).filter((x) => x.lugar_id && !ubicado(lugarDe(x.lugar_id)))
+  return mapaPorLugar().filter((x) => !ubicado(lugarDe(x.lugar_id)))
     .map((x) => ({ l: lugarDe(x.lugar_id), precio: x.precio, fresco: x.fresco, dist: null })).filter((x) => x.l);
 }
 // El más barato entre TODOS sus lugares (también los que no están en el mapa), y sólo si hay
-// con qué comparar (dos precios frescos o más): el mismo que dice la lista de Productos.
+// con qué comparar (dos lugares con precio fresco o más): el mismo que dice la lista de Productos.
 function mapaMejor() {
-  if (!mapa.prod) return null;
-  const fr = (resumenProductos().find((x) => x.producto.id === mapa.prod)?.lugares || []).filter((x) => x.fresco);
+  const fr = mapaPorLugar().filter((x) => x.fresco && x.base);
   return fr.length > 1 ? fr[0].lugar_id : null;
 }
 
@@ -1085,14 +1101,15 @@ function mapPinHtml(pt, { mejor = false } = {}) {
   return `<span class="mpin" style="background:${fillOf(personColor(pt.l.cadena || '?'))};color:var(--on-tone)">${esc(inicial(pt.l.cadena))}</span>`;
 }
 // Un lugar de la lista de abajo: dónde queda, a qué distancia y, con un producto, su precio.
-function mapaRowHtml(pt, { mejor = false } = {}) {
+// conProd: con varios productos elegidos, cuál es el de ese precio.
+function mapaRowHtml(pt, { mejor = false, conProd = false } = {}) {
   const l = pt.l;
   const donde = lugarDonde(l);
   const p = pt.precio ? state.productos.get(pt.precio.producto_id) : null;
   return `<button type="button" class="mrow txrow${pt.fresco ? '' : ' mrow--old'}" data-lugar="${esc(l.id)}">
     ${lugarIc(l)}
     <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
-      <span class="row__meta"><span class="movchips">${mejor ? '<span class="chip chip--best">Más barato</span>' : ''}${pt.dist != null ? `<span class="chip chip--dist">${esc(distLabel(pt.dist))}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}</span></span></span>
+      <span class="row__meta"><span class="movchips">${mejor ? '<span class="chip chip--best">Más barato</span>' : ''}${conProd && p ? `<span class="chip">${esc([productoNombre(p), productoSub(p)].filter(Boolean).join(' '))}</span>` : ''}${pt.dist != null ? `<span class="chip chip--dist">${esc(distLabel(pt.dist))}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}</span></span></span>
     ${pt.precio ? `<span class="mrow__right"><span class="mrow__amt">${fmtMoney(comparable(pt.precio))}</span><span class="row__of">${esc(porQue(pt.precio, p))}</span></span>` : ''}
   </button>`;
 }
@@ -1105,14 +1122,8 @@ function mapaHtml() {
     </div>
     <div id="mapa-list">${mapaListHtml()}</div>`;
 }
-// Arriba: el buscador o, con un producto o un local elegido, cuál es y cómo sacarlo.
+// Arriba: el buscador y los productos elegidos o, con un local elegido, cuál es y cómo sacarlo.
 function mapaTopHtml() {
-  const p = mapa.prod && state.productos.get(mapa.prod);
-  if (p) {
-    return `<div class="mapa__sel"><span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
-      <span class="mapa__selname">${esc(productoNombre(p))}${productoSub(p) ? ` <span class="prod__medida">${esc(productoSub(p))}</span>` : ''}</span>
-      <button type="button" class="modal__x" data-mapa-prod="" aria-label="Ver todos los lugares">✕</button></div>`;
-  }
   if (mapa.local) {
     const loc = mapa.local;
     const donde = [loc.nombre !== loc.direccion ? loc.direccion : '', loc.ciudad].filter(Boolean).join(', ');
@@ -1120,9 +1131,20 @@ function mapaTopHtml() {
       <span class="mapa__selname">${esc(loc.nombre)}${donde ? ` <span class="prod__medida">${esc(donde)}</span>` : ''}</span>
       <button type="button" class="modal__x" data-mapa-local="" aria-label="Ver todos los lugares">✕</button></div>`;
   }
+  const hay = mapa.prods.length > 0;
   return `<label class="buscador"><span class="sr-only">Buscar un producto o un local en el mapa</span>${ic('search', 20)}
-      <input type="search" id="mapa-q" placeholder="Buscá un producto o un local" autocomplete="off" enterkeyhint="search" value="${esc(mapa.q)}"></label>
+      <input type="search" id="mapa-q" placeholder="${hay ? 'Sumá otro producto' : 'Buscá un producto o un local'}" autocomplete="off" enterkeyhint="search" value="${esc(mapa.q)}"></label>
+    ${mapaProdsHtml(mapa.prods)}
     <div class="gcard mapa__sug" id="mapa-sug"${mapa.q.trim() ? '' : ' hidden'}>${mapaSugHtml()}</div>`;
+}
+// Los productos elegidos: cada uno se saca tocándolo; con varios, primero «Sacar todos».
+function mapaProdsHtml(ids) {
+  const prods = ids.map((id) => state.productos.get(id)).filter(Boolean);
+  if (!prods.length) return '';
+  return `<div class="ciudades mapa__prods">${prods.length > 1 ? '<button type="button" class="ciudad" data-mapa-prod="">Sacar todos</button>' : ''}${prods.map((p) => {
+    const nombre = [productoNombre(p), productoSub(p)].filter(Boolean).join(' ');
+    return `<button type="button" class="ciudad active mapa__prod" data-mapa-quitar="${esc(p.id)}" aria-label="Sacar ${esc(nombre)}">${ic('tag', 16)}<span>${esc(nombre)}</span><span aria-hidden="true">✕</span></button>`;
+  }).join('')}</div>`;
 }
 // El lugar tuyo (con punto) que está en ese mismo lugar del mapa, si hay.
 function lugarCerca(loc) {
@@ -1141,10 +1163,10 @@ function mapaSugHtml() {
   const words = normQ(mapa.q).split(/\s+/).filter(Boolean);
   if (!words.length) return '';
   const coincide = (t) => words.every((w) => normQ(t).includes(w));
-  const prods = resumenProductos()
-    .filter((r) => r.lugares.some((x) => ubicado(lugarDe(x.lugar_id))))
-    .filter((r) => coincide(`${r.producto.marca} ${r.producto.nombre} ${productoSub(r.producto)}`))
-    .slice(0, 6);
+  const todosProds = resumenProductos()
+    .filter((r) => !mapa.prods.includes(r.producto.id) && r.lugares.some((x) => ubicado(lugarDe(x.lugar_id))))
+    .filter((r) => coincide(`${r.producto.marca} ${r.producto.nombre} ${productoSub(r.producto)}`));
+  const prods = todosProds.slice(0, 6);
   const mios = [...state.lugares.values()].filter((l) => ubicado(l) && coincide(`${l.cadena} ${l.sucursal} ${l.direccion} ${l.ciudad}`));
   const actuales = mapa.locQ === mapa.q.trim() && Array.isArray(mapa.locales) ? mapa.locales : [];
   const ajenos = [];
@@ -1153,7 +1175,13 @@ function mapaSugHtml() {
     if (l) { if (!mios.includes(l)) mios.push(l); } else ajenos.push([loc, i]);
   });
   const dist = (x) => (mapa.pos ? `<span class="chip chip--dist">${esc(distLabel(metros(mapa.pos, x)))}</span>` : '');
-  const prodHtml = prods.map((r) => `<button type="button" class="mrow txrow row--solo" data-mapa-prod="${esc(r.producto.id)}">
+  // Varios productos con lo escrito: todos juntos en el mapa (todas las marcas de agua).
+  const todosHtml = todosProds.length > 1 ? `<button type="button" class="mrow txrow row--solo" data-mapa-prods="${esc(todosProds.map((r) => r.producto.id).join(','))}">
+    <span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
+    <span class="mrow__text"><span class="mrow__title">Todos los de «${esc(mapa.q.trim())}»</span>
+      <span class="row__meta"><span class="movchips"><span class="chip">${todosProds.length} productos</span></span></span></span>
+  </button>` : '';
+  const prodHtml = todosHtml + prods.map((r) => `<button type="button" class="mrow txrow row--solo" data-mapa-prod="${esc(r.producto.id)}">
     <span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
     <span class="mrow__text"><span class="mrow__title">${esc(productoNombre(r.producto))}${productoSub(r.producto) ? ` <span class="prod__medida">${esc(productoSub(r.producto))}</span>` : ''}</span></span>
   </button>`).join('');
@@ -1181,14 +1209,15 @@ function mapaListHtml() {
   const pts = mapaPuntos();
   const sin = mapaSinPunto();
   const mejor = mapaMejor();
+  const conProd = mapa.prods.length > 1;
   const sinPunto = [...state.lugares.values()].filter((l) => !ubicado(l)).length;
   const nota = sinPunto ? `<p class="note mapa__nota">${sinPunto === 1 ? 'Un lugar todavía no está' : `${sinPunto} lugares todavía no están`} en el mapa: les falta la dirección o no la encontré. <button type="button" class="linkbtn" data-goto="lugares">Ver los lugares</button></p>` : '';
-  const sinHtml = sin.length ? `<span class="setsub">No están en el mapa</span><div class="gcard">${sin.map((pt) => mapaRowHtml(pt, { mejor: pt.l.id === mejor })).join('')}</div>` : '';
+  const sinHtml = sin.length ? `<span class="setsub">No están en el mapa</span><div class="gcard">${sin.map((pt) => mapaRowHtml(pt, { mejor: pt.l.id === mejor, conProd })).join('')}</div>` : '';
   if (!pts.length) {
-    return `${mapa.prod ? `<p class="note">Este producto no tiene precios en lugares del mapa.</p>${sinHtml}` : `<div class="tcard">${emptyState('Todavía no hay lugares en el mapa', 'Aparecen cuando un ticket trae la dirección del local, o cuando se la ponés desde su ficha.', [{ label: 'Ver los lugares', attr: 'data-goto="lugares"' }])}</div>`}${nota}`;
+    return `${mapa.prods.length ? `<p class="note">${conProd ? 'Estos productos no tienen' : 'Este producto no tiene'} precios en lugares del mapa.</p>${sinHtml}` : `<div class="tcard">${emptyState('Todavía no hay lugares en el mapa', 'Aparecen cuando un ticket trae la dirección del local, o cuando se la ponés desde su ficha.', [{ label: 'Ver los lugares', attr: 'data-goto="lugares"' }])}</div>`}${nota}`;
   }
-  const titulo = mapa.prod ? (mapa.pos ? '¿Dónde está más barato? · cerca tuyo' : '¿Dónde está más barato?') : mapa.pos ? 'Lo más cerca' : 'Los lugares';
-  return `<span class="setsub">${titulo}</span><div class="gcard">${pts.map((pt) => mapaRowHtml(pt, { mejor: pt.l.id === mejor })).join('')}</div>${sinHtml}${mapa.prod ? '' : nota}`;
+  const titulo = mapa.prods.length ? (mapa.pos ? '¿Dónde está más barato? · cerca tuyo' : '¿Dónde está más barato?') : mapa.pos ? 'Lo más cerca' : 'Los lugares';
+  return `<span class="setsub">${titulo}</span><div class="gcard">${pts.map((pt) => mapaRowHtml(pt, { mejor: pt.l.id === mejor, conProd })).join('')}</div>${sinHtml}${mapa.prods.length ? '' : nota}`;
 }
 
 async function wireMapa() {
@@ -1299,7 +1328,7 @@ function wireMapaQ() {
 // Uno de tus lugares desde el buscador: el mapa centrado en él (tocar su punto abre la ficha).
 function elegirLugarMapa(id) {
   mapa.foco = id;
-  mapa.prod = '';
+  mapa.prods = [];
   mapa.local = null;
   mapa.q = '';
   mapa.centrado = false;
@@ -1311,7 +1340,7 @@ function elegirLugarMapa(id) {
 function elegirLocalMapa(i) {
   mapa.local = i === '' ? null : mapa.locales[Number(i)] || null;
   mapa.foco = '';
-  mapa.prod = '';
+  mapa.prods = [];
   if (mapa.local) mapa.q = '';
   mapa.centrado = false;
   document.activeElement?.blur();
@@ -1320,19 +1349,25 @@ function elegirLocalMapa(i) {
 // "Ver en el mapa" de la ficha de un lugar: la pantalla Mapa centrada en él.
 function verEnMapa(id) {
   mapa.foco = id;
-  mapa.prod = '';
+  mapa.prods = [];
   mapa.local = null;
   mapa.centrado = false;
   closeLayer();
   showView('mapa');
 }
-function elegirProductoMapa(pid) {
+// Sumar productos al mapa ('' los saca todos); quitarProductoMapa saca uno.
+function elegirProductoMapa(ids) {
   mapa.foco = '';
   mapa.local = null;
-  mapa.prod = pid;
+  mapa.prods = ids === '' ? [] : [...new Set([...mapa.prods, ...ids.split(',').filter((id) => state.productos.has(id))])];
   mapa.q = '';
   mapa.centrado = false;
   document.activeElement?.blur();
+  pintarMapa();
+}
+function quitarProductoMapa(pid) {
+  mapa.prods = mapa.prods.filter((id) => id !== pid);
+  mapa.centrado = false;
   pintarMapa();
 }
 function ubicarme({ callado = false } = {}) {
@@ -2001,6 +2036,10 @@ document.addEventListener('click', (e) => {
   if (mlo) { elegirLocalMapa(mlo.dataset.mapaLocal); return; }
   const mp = t.closest('[data-mapa-prod]');
   if (mp) { elegirProductoMapa(mp.dataset.mapaProd); return; }
+  const mps = t.closest('[data-mapa-prods]');
+  if (mps) { elegirProductoMapa(mps.dataset.mapaProds); return; }
+  const mq = t.closest('[data-mapa-quitar]');
+  if (mq) { quitarProductoMapa(mq.dataset.mapaQuitar); return; }
   if (t.closest('[data-mapa-yo]')) { ubicarme(); return; }
   const vm = t.closest('[data-ver-mapa]');
   if (vm) { verEnMapa(vm.dataset.verMapa); return; }
@@ -2106,7 +2145,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

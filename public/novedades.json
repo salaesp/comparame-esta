@@ -1,5 +1,12 @@
 [
   {
+    "version": "next:minor",
+    "fecha": "",
+    "notas": [
+      "En el Mapa podés ver varios productos a la vez: buscá «agua» y tocá «Todos los de agua» para ver dónde está más barata cualquier marca, o sumá productos de a uno."
+    ]
+  },
+  {
     "version": "0.5.2",
     "fecha": "2026-10-31",
     "notas": [

@@ -52,12 +52,13 @@ function pintar() {
       `<div class="tcard ds__phone">${c.productoRowHtml(resumen('p1'))}${c.productoRowHtml(resumen('p2'))}</div>`),
     sec('Lugares', '<code>lugaresHtml</code>: cada lugar con dónde queda (<code>lugarDonde</code>: la dirección y la ciudad; sin dirección, su punto de venta). Con lugares de más de una ciudad, arriba el filtro (<code>ciudadesHtml</code>): la elegida tonal con aro.',
       `<div class="ds__phone" style="display:flex;flex-direction:column;gap:14px">${c.lugaresHtml()}</div>`),
-    sec('El mapa', 'Los puntos de la pantalla Mapa (<code>mapPinHtml</code>): la inicial del lugar en su color; buscando un producto, su precio (el más barato tonal con aro, uno de hace más de 30 días apagado). Debajo del mapa, la misma lista (<code>mapaRowHtml</code>), con la distancia si se sabe dónde estás.',
+    sec('El mapa', 'Los puntos de la pantalla Mapa (<code>mapPinHtml</code>): la inicial del lugar en su color; buscando productos (uno o varios: «Todos los de agua»), el precio del más barato de ellos en cada lugar (el más barato tonal con aro, uno de hace más de 30 días apagado). Arriba, los productos elegidos (<code>mapaProdsHtml</code>, tocar uno lo saca). Debajo del mapa, la misma lista (<code>mapaRowHtml</code>), con la distancia si se sabe dónde estás y, con varios productos, cuál es.',
       `<div class="tcard ds__phone"><div class="ds__pins">${[
         [14, { l: st.lugares.get('l1') }], [34, { l: st.lugares.get('l2') }],
         [56, { l: st.lugares.get('l2'), precio: st.precios[1], fresco: true }, true], [78, { l: st.lugares.get('l1'), precio: st.precios[0], fresco: true }],
       ].map(([x, pt, mejor]) => `<span style="position:absolute;left:${x}%;top:50%">${c.mapPinHtml(pt, { mejor })}</span>`).join('')}</div>
-      ${c.mapaRowHtml({ l: st.lugares.get('l2'), precio: st.precios[1], fresco: true, dist: 1400 }, { mejor: true })}${c.mapaRowHtml({ l: st.lugares.get('l1'), precio: st.precios[0], fresco: true, dist: 600 })}</div>`),
+      ${c.mapaProdsHtml(['p1', 'p2'])}
+      ${c.mapaRowHtml({ l: st.lugares.get('l2'), precio: st.precios[1], fresco: true, dist: 1400 }, { mejor: true, conProd: true })}${c.mapaRowHtml({ l: st.lugares.get('l1'), precio: st.precios[0], fresco: true, dist: 600 })}</div>`),
     sec('Buscar el local', 'En la revisión, en la ficha del lugar y al cambiar el lugar de un ticket (<code>lugarFormHtml</code>), el local se busca como en Google Maps (<code>localBuscadorHtml</code> + <code>wireLocalBuscador</code>): sólo el buscador y el mapa. Los locales encontrados son puntos (<code>localPinHtml</code>, el elegido tonal con aro); al tocar uno se completan la dirección, la ciudad y su punto, y debajo del mapa queda cuál es (<code>localSelHtml</code>). Si no aparece, «Escribí la dirección» abre los campos.',
       `<div class="tcard ds__phone"><div class="ds__pins">${[[20, true], [45], [70]].map(([x, on]) => `<span style="position:absolute;left:${x}%;top:50%">${c.localPinHtml({ elegido: on })}</span>`).join('')}</div>
       ${c.localSelHtml({ nombre: 'Carrefour Market', direccion: 'Avenida Cabildo 2441', ciudad: 'CABA', lat: -34.5586, lon: -58.4593 })}
