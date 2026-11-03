@@ -204,13 +204,22 @@ function productoNombre(p) {
 }
 const productoSub = (p) => medidaLabel(p?.medida, p?.medida_unidad);
 // El precio para comparar entre lugares y tamaños: por kg, litro o unidad de la medida si
-// se sabe; si no, lo pagado por unidad.
+// se sabe; si no, lo pagado por unidad. Sólo ordena: lo que se muestra es `precioDe`.
 const comparable = (pr) => pr.precio_medida ?? pr.precio_unit;
+// Lo que se muestra: lo que costó uno (el maple, la botella); lo suelto, el kg.
+const precioDe = (pr) => pr.precio_unit ?? pr.precio_medida;
+// Lo de abajo del precio: "el kg" o "c/u" y, si la medida dice otra cosa, el precio por
+// kg, litro o unidad ("$ 1.200 el litro", "$ 300 la unidad").
 function porQue(pr, p) {
-  if (pr.unidad === 'kg' || (pr.precio_medida != null && p?.medida_unidad === 'g')) return 'el kg';
-  if (pr.precio_medida != null && p?.medida_unidad === 'ml') return 'el litro';
-  if (pr.precio_medida != null && p?.medida_unidad === 'u') return 'la unidad';
-  return 'c/u';
+  if (pr.unidad === 'kg') return 'el kg';
+  const pm = pr.precio_medida;
+  if (pm == null || pr.precio_unit == null || Math.abs(pm - pr.precio_unit) < 0.01) {
+    if (pm != null && p?.medida_unidad === 'g') return 'el kg';
+    if (pm != null && p?.medida_unidad === 'ml') return 'el litro';
+    return 'c/u';
+  }
+  const por = p?.medida_unidad === 'g' ? 'el kg' : p?.medida_unidad === 'ml' ? 'el litro' : 'la unidad';
+  return `${fmtMoney(pm)} ${por}`;
 }
 
 // Lo último de cada producto en cada lugar: [{ lugar_id, precio (el renglón), fresco }],
@@ -574,7 +583,7 @@ function productoRowHtml(r) {
     <span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
     <span class="mrow__text"><span class="mrow__title">${esc(productoNombre(p))}${sub ? ` <span class="prod__medida">${esc(sub)}</span>` : ''}</span>
       <span class="row__meta"><span class="movchips">${meta}</span></span></span>
-    <span class="mrow__right"><span class="mrow__amt${m ? '' : ' amt-old'}">${fmtMoney(comparable(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
+    <span class="mrow__right"><span class="mrow__amt${m ? '' : ' amt-old'}">${fmtMoney(precioDe(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
   </button>`;
 }
 
@@ -601,8 +610,8 @@ function cambioRowHtml(c) {
   return `<button type="button" class="mrow txrow" data-producto="${esc(p?.id || '')}">
     <span class="mrow__ic" aria-hidden="true">${ic(pct > 0 ? 'up' : 'down', 20)}</span>
     <span class="mrow__text"><span class="mrow__title">${esc(productoNombre(p))}</span>
-      <span class="row__meta"><span class="movchips"><span class="chip">${esc(l?.cadena || '—')}</span><span class="chip">antes ${fmtMoney(comparable(c.antes))}</span></span></span></span>
-    <span class="mrow__right"><span class="mrow__amt">${fmtMoney(comparable(c.ultimo))}</span><span class="trendpill trendpill--${pct > 0 ? 'neg' : 'pos'}">${pct > 0 ? '+' : ''}${pct}%</span></span>
+      <span class="row__meta"><span class="movchips"><span class="chip">${esc(l?.cadena || '—')}</span><span class="chip">antes ${fmtMoney(precioDe(c.antes))}</span></span></span></span>
+    <span class="mrow__right"><span class="mrow__amt">${fmtMoney(precioDe(c.ultimo))}</span><span class="trendpill trendpill--${pct > 0 ? 'neg' : 'pos'}">${pct > 0 ? '+' : ''}${pct}%</span></span>
   </button>`;
 }
 
@@ -660,20 +669,20 @@ async function openProducto(pid) {
         ${lugarIc(l)}
         <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
           <span class="row__meta"><span class="movchips">${x.fresco && !x.otra && i === 0 && frescos.length > 1 ? '<span class="chip chip--best">Más barato</span>' : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${whoChip(pr.user_id)}<span class="chip">${esc(fmtFecha(pr.fecha))}</span></span></span></span>
-        <span class="mrow__right"><span class="mrow__amt">${fmtMoney(comparable(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
+        <span class="mrow__right"><span class="mrow__amt">${fmtMoney(precioDe(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
       </button>`;
     };
     const hist = [...data.precios].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
     return `${modalHead(productoNombre(p), productoSub(p))}
       ${!mejor && otras.length ? `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días en ${esc(ciudad)}.</p>` : mejor ? `<div class="prodhero">
           <span class="lbl">${frescos.length > 1 ? 'Más barato hoy' : 'Último precio'}</span>
-          <span class="prodhero__amt">${fmtMoney(comparable(mejor.precio))}</span>
-          <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(comparable(frescos[frescos.length - 1].precio) - comparable(mejor.precio))} menos que en el más caro` : ''}</span>
+          <span class="prodhero__amt">${fmtMoney(precioDe(mejor.precio))}</span>
+          <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(precioDe(frescos[frescos.length - 1].precio) - precioDe(mejor.precio))} menos que en el más caro` : ''}</span>
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
-      ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(comparable(pr))}</b></button>`).join('')}</div></details>` : ''}
+      ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
       <div class="prodfoot">
         ${p.ean ? `<span class="chip">Código ${esc(p.ean)}</span>` : ''}
         <button type="button" class="set__btn" data-prod-edit="${esc(p.id)}">${ic('edit', 18)} Corregir el producto</button>
@@ -1080,7 +1089,7 @@ function mapaMejor() {
 // Un punto del mapa: la inicial del lugar en su color o, buscando un producto, su precio.
 function mapPinHtml(pt, { mejor = false } = {}) {
   if (pt.precio) {
-    return `<span class="mpin mpin--precio${mejor ? ' mpin--best' : ''}${pt.fresco ? '' : ' mpin--old'}">${fmtMoney(Math.round(comparable(pt.precio)))}</span>`;
+    return `<span class="mpin mpin--precio${mejor ? ' mpin--best' : ''}${pt.fresco ? '' : ' mpin--old'}">${fmtMoney(Math.round(precioDe(pt.precio)))}</span>`;
   }
   return `<span class="mpin" style="background:${fillOf(personColor(pt.l.cadena || '?'))};color:var(--on-tone)">${esc(inicial(pt.l.cadena))}</span>`;
 }
@@ -1093,7 +1102,7 @@ function mapaRowHtml(pt, { mejor = false } = {}) {
     ${lugarIc(l)}
     <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
       <span class="row__meta"><span class="movchips">${mejor ? '<span class="chip chip--best">Más barato</span>' : ''}${pt.dist != null ? `<span class="chip chip--dist">${esc(distLabel(pt.dist))}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}</span></span></span>
-    ${pt.precio ? `<span class="mrow__right"><span class="mrow__amt">${fmtMoney(comparable(pt.precio))}</span><span class="row__of">${esc(porQue(pt.precio, p))}</span></span>` : ''}
+    ${pt.precio ? `<span class="mrow__right"><span class="mrow__amt">${fmtMoney(precioDe(pt.precio))}</span><span class="row__of">${esc(porQue(pt.precio, p))}</span></span>` : ''}
   </button>`;
 }
 
