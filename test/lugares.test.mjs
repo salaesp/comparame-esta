@@ -118,6 +118,27 @@ test('cambiar el lugar de un ticket: a uno que ya existe, corrigiendo el lugar s
   assert.equal(r3.data.lugar_id, dia.lugarId);
 });
 
+test('con y sin CUIT, la misma dirección es el mismo lugar: al cargar y al corregir (se juntan)', async () => {
+  const a = await cargar(ana, { direccion: 'Camino Parque Centenario 1200', ciudad: 'Tolosa' });
+  // El mismo local, leído sin CUIT: lo reconoce por la cadena y la dirección.
+  const b = await cargar(ana, { cuit: null, direccion: 'CAMINO PARQUE CENTENARIO 1200' });
+  assert.equal(b.lectura.lugar.existe, true);
+  assert.equal(b.lugarId, a.lugarId);
+  // Uno que quedó aparte (sin CUIT, con otra dirección) y se corrige a la de aquél: se ofrece juntarlos.
+  const c = await cargar(ana, { cuit: null, direccion: 'Camino Centenario s/n' });
+  assert.notEqual(c.lugarId, a.lugarId);
+  const r = await pedir(worker, ana, 'PATCH', `/api/lugares/${c.lugarId}`, { direccion: 'Camino Parque Centenario 1200' });
+  assert.equal(r.status, 409);
+  assert.equal(r.data.otro.id, a.lugarId);
+  const j = await pedir(worker, ana, 'PATCH', `/api/lugares/${c.lugarId}`, { direccion: 'Camino Parque Centenario 1200', juntar: a.lugarId });
+  assert.equal(j.status, 200);
+  assert.equal(await lugar(c.lugarId), undefined);
+  assert.equal((await db.sql('select count(*) as n from tickets where lugar_id = ?1', [a.lugarId]))[0].n, 3);
+  // Otro CUIT con el mismo nombre y la misma dirección no es el mismo.
+  const d = await cargar(ana, { cuit: '30-12345678-1', direccion: 'Camino Parque Centenario 1200' });
+  assert.notEqual(d.lugarId, a.lugarId);
+});
+
 test('una base de antes de la 0.3.0: suma las columnas y las claves de los lugares que ya estaban', async () => {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(`create table lugares (id text primary key, cadena text not null default '', sucursal text not null default '',

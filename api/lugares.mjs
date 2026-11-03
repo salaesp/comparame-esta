@@ -15,7 +15,7 @@ import { json, error, readJson, segs } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { lugarKeys, ciudadLimpia } from '../lib/productos.mjs';
-import { LUGAR_COLS } from '../lib/catalogo.mjs';
+import { LUGAR_COLS, mismaDireccion } from '../lib/catalogo.mjs';
 import { ubicarLugares, buscarLocales, puntoValido } from '../lib/geo.mjs';
 
 const texto = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : null);
@@ -53,9 +53,12 @@ async function editar(userId, id, b) {
   const ciudad = b?.ciudad != null ? ciudadLimpia(b.ciudad) : l.ciudad;
   const clave = direccion ? lugarKeys({ cuit: l.cuit, cadena: l.cadena, direccion })[0] : null;
   const [duenio] = clave ? await sql('select lugar_id from lugar_claves where clave = ?1', [clave]) : [];
+  // Por la clave o, si uno tiene CUIT y el otro no, por la cadena y la dirección.
+  const otro = duenio && duenio.lugar_id !== id
+    ? (await sql(`select ${LUGAR_COLS} from lugares where id = ?1`, [duenio.lugar_id]))[0]
+    : direccion ? await mismaDireccion({ cadena: l.cadena, cuit: l.cuit, direccion }, id) : null;
 
-  if (duenio && duenio.lugar_id !== id) {
-    const [otro] = await sql(`select ${LUGAR_COLS} from lugares where id = ?1`, [duenio.lugar_id]);
+  if (otro) {
     if (b?.juntar !== otro.id) return error('Ya hay un lugar con esa dirección.', 409, { otro: { ...otro, cadena_key: undefined } });
     // Lo que el otro no tiene, lo pone éste (con lo recién escrito).
     const LLENAR = ['sucursal', 'ciudad', 'punto_venta', 'cuit'];

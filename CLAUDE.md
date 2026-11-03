@@ -31,9 +31,11 @@ Toda la UI y los textos van en castellano rioplatense.
 - **Los lugares** (`lib/catalogo.mjs` `buscarLugar`/`completarLugarStmts`): Claude copia la ciudad y
   el punto de venta (la parte de adelante del número de factura); un ticket se reconoce por la
   dirección y, sin ella, por el punto de venta (una sucursal puede tener varios, uno por caja: se
-  suman todos), y cada ticket le completa al lugar lo que no tenga. Sin dirección, la revisión avisa
+  suman todos), y cada ticket le completa al lugar lo que no tenga. Como las claves llevan el CUIT
+  adelante si se leyó, también se busca por cadena + dirección (`mismaDireccion`): con y sin CUIT es el
+  mismo local (con dos CUIT distintos, no). Sin dirección, la revisión avisa
   (`sinDireccionHtml`). La ficha del lugar la corrige (`PATCH /api/lugares/:id`, quien lo creó o
-  cargó ahí): con una dirección que ya es de otro, contesta 409 con `otro` y con `juntar` pasa sus
+  cargó ahí): con una dirección que ya es de otro, contesta 409 con `otro` (también por `mismaDireccion`) y con `juntar` pasa sus
   tickets, precios y claves a ése. Con lugares de más de una ciudad, Productos y Lugares se filtran
   por una (`ciudadesHtml`, `localStorage['cmp:ciudad']`; la ficha del producto pone las otras al
   pie). La ciudad se escribe de una forma (`ciudadLimpia`: "Capital Federal" es CABA).
