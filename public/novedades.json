@@ -1,5 +1,12 @@
 [
   {
+    "version": "next",
+    "fecha": "",
+    "notas": [
+      "Si un lugar quedó cargado dos veces, desde su ficha tocá «Es el mismo que otro» y elegí cuál: quedan en uno solo, con los tickets de los dos."
+    ]
+  },
+  {
     "version": "0.6.0",
     "fecha": "2026-11-03",
     "notas": [

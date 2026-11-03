@@ -3,6 +3,7 @@
 //   GET   /api/lugares/buscar?q=&lat=&lon= -> los locales que se llaman así (lib/geo.mjs
 //         buscarLocales), para elegir uno en vez de escribir la dirección
 //   PATCH /api/lugares/:id {sucursal, direccion, ciudad, lat?, lon?, juntar?} -> corregir un lugar
+//   POST  /api/lugares/:id/juntar {con} -> es el mismo local que `con`: se junta en él
 //
 // Con la dirección nueva puede aparecer que el lugar ya existía (un Carrefour cargado sin
 // dirección, por su punto de venta, y el mismo con dirección): contesta 409 con `otro` y,
@@ -26,6 +27,7 @@ export default async function (req) {
   const [, , id, s3] = segs(req);
   if (id === 'buscar' && !s3 && req.method === 'GET') return buscar(req);
   if (id && !s3 && req.method === 'PATCH') return editar(me.userId, id, await readJson(req));
+  if (id && s3 === 'juntar' && req.method === 'POST') return juntar(me.userId, id, await readJson(req));
   return error('método no permitido', 405);
 }
 
@@ -60,21 +62,8 @@ async function editar(userId, id, b) {
 
   if (otro) {
     if (b?.juntar !== otro.id) return error('Ya hay un lugar con esa dirección.', 409, { otro: { ...otro, cadena_key: undefined } });
-    // Lo que el otro no tiene, lo pone éste (con lo recién escrito).
-    const LLENAR = ['sucursal', 'ciudad', 'punto_venta', 'cuit'];
     const punto = puntoValido(b?.lat, b?.lon) ? [b.lat, b.lon] : [null, null];
-    const [, , , , [row]] = await txBatch([
-      ['update tickets set lugar_id = ?1 where lugar_id = ?2', [otro.id, id]],
-      ['update precios set lugar_id = ?1 where lugar_id = ?2', [otro.id, id]],
-      ['update lugar_claves set lugar_id = ?1 where lugar_id = ?2', [otro.id, id]],
-      ['delete from lugares where id = ?1', [id]],
-      // Y si el otro no tenía punto y éste se eligió en el buscador, se lo pone.
-      [`update lugares set ${LLENAR.map((c, i) => `${c} = case when ${c} = '' then ?${i + 2} else ${c} end`).join(', ')},
-           geo_at = case when lat is null and ?6 is not null then strftime('%Y-%m-%dT%H:%M:%fZ', 'now') else geo_at end,
-           lat = coalesce(lat, ?6), lon = case when lat is null then ?7 else lon end
-         where id = ?1 returning ${LUGAR_COLS}`, [otro.id, sucursal, ciudad, l.punto_venta, l.cuit, ...punto]],
-    ]);
-    return json({ ok: true, lugar: { ...row, cadena_key: undefined }, juntado: otro.id });
+    return juntarEn(id, otro.id, { sucursal, direccion: '', ciudad, punto_venta: l.punto_venta, cuit: l.cuit }, punto);
   }
 
   const punto = direccion && puntoValido(b?.lat, b?.lon) ? [b.lat, b.lon] : null;
@@ -92,4 +81,38 @@ async function editar(userId, id, b) {
   return json({ ok: true, lugar: { ...row, cadena_key: undefined } });
 }
 
-export const config = { path: ['/api/lugares/buscar', '/api/lugares/:id'] };
+// Juntar éste en otro (el mismo local cargado dos veces): sus tickets, precios y claves pasan
+// al otro, que se completa con lo que no tenga, y éste se borra. Lo hace quien puede
+// corregir éste; el otro es del catálogo (de todos).
+async function juntar(userId, id, b) {
+  const con = typeof b?.con === 'string' ? b.con : '';
+  if (!con || con === id) return error('Elegí con qué lugar juntarlo.', 422);
+  const [l] = await sql(
+    `select ${LUGAR_COLS} from lugares where id = ?1
+        and (creado_por = ?2 or exists (select 1 from tickets where lugar_id = ?1 and user_id = ?2))`,
+    [id, userId],
+  );
+  if (!l) return error('no encontrado', 404);
+  const [otro] = await sql('select id from lugares where id = ?1', [con]);
+  if (!otro) return error('no encontrado', 404);
+  return juntarEn(id, con, l, l.lat != null ? [l.lat, l.lon] : [null, null]);
+}
+
+// El batch de juntar `id` en `destino`; `datos` completa lo que el destino tenga vacío.
+async function juntarEn(id, destino, datos, punto) {
+  const LLENAR = ['sucursal', 'direccion', 'ciudad', 'punto_venta', 'cuit'];
+  const [, , , , [row]] = await txBatch([
+    ['update tickets set lugar_id = ?1 where lugar_id = ?2', [destino, id]],
+    ['update precios set lugar_id = ?1 where lugar_id = ?2', [destino, id]],
+    ['update lugar_claves set lugar_id = ?1 where lugar_id = ?2', [destino, id]],
+    ['delete from lugares where id = ?1', [id]],
+    // Y si el otro no tenía punto y éste sí, se lo pone.
+    [`update lugares set ${LLENAR.map((c, i) => `${c} = case when ${c} = '' then ?${i + 2} else ${c} end`).join(', ')},
+         geo_at = case when lat is null and ?7 is not null then strftime('%Y-%m-%dT%H:%M:%fZ', 'now') else geo_at end,
+         lat = coalesce(lat, ?7), lon = case when lat is null then ?8 else lon end
+       where id = ?1 returning ${LUGAR_COLS}`, [destino, ...LLENAR.map((c) => datos[c] || ''), ...punto]],
+  ]);
+  return json({ ok: true, lugar: { ...row, cadena_key: undefined }, juntado: destino });
+}
+
+export const config = { path: ['/api/lugares/buscar', '/api/lugares/:id', '/api/lugares/:id/juntar'] };

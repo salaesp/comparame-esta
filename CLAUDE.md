@@ -36,7 +36,8 @@ Toda la UI y los textos van en castellano rioplatense.
   mismo local (con dos CUIT distintos, no). Sin dirección, la revisión avisa
   (`sinDireccionHtml`). La ficha del lugar la corrige (`PATCH /api/lugares/:id`, quien lo creó o
   cargó ahí): con una dirección que ya es de otro, contesta 409 con `otro` (también por `mismaDireccion`) y con `juntar` pasa sus
-  tickets, precios y claves a ése. Con lugares de más de una ciudad, Productos y Lugares se filtran
+  tickets, precios y claves a ése. A mano, "Es el mismo que otro" (`openLugarJuntar`, `lugarJuntarHtml`,
+  `POST /api/lugares/:id/juntar {con}`) junta dos lugares cualesquiera. Con lugares de más de una ciudad, Productos y Lugares se filtran
   por una (`ciudadesHtml`, `localStorage['cmp:ciudad']`; la ficha del producto pone las otras al
   pie). La ciudad se escribe de una forma (`ciudadLimpia`: "Capital Federal" es CABA).
 - **El punto en el mapa** (`lib/geo.mjs`): la dirección y la ciudad pasan por **Georef**

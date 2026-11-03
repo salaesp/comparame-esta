@@ -52,6 +52,8 @@ function pintar() {
       `<div class="tcard ds__phone">${c.productoRowHtml(resumen('p1'))}${c.productoRowHtml(resumen('p2'))}</div>`),
     sec('Lugares', '<code>lugaresHtml</code>: cada lugar con dónde queda (<code>lugarDonde</code>: la dirección y la ciudad; sin dirección, su punto de venta). Con lugares de más de una ciudad, arriba el filtro (<code>ciudadesHtml</code>): la elegida tonal con aro.',
       `<div class="ds__phone" style="display:flex;flex-direction:column;gap:14px">${c.lugaresHtml()}</div>`),
+    sec('Es el mismo que otro', '<code>lugarJuntarHtml</code>: desde la ficha de un lugar, los otros lugares (primero los de la misma cadena) para elegir cuál es el mismo local; tocar uno los junta (<code>POST /api/lugares/:id/juntar</code>).',
+      `<div class="ds__phone" style="display:flex;flex-direction:column;gap:14px">${c.lugarJuntarHtml('l3')}</div>`),
     sec('El mapa', 'Los puntos de la pantalla Mapa (<code>mapPinHtml</code>): la inicial del lugar en su color; buscando productos (uno o varios: «Todos los de agua»), el precio del más barato de ellos en cada lugar (el más barato tonal con aro, uno de hace más de 30 días apagado). Arriba, los productos elegidos (<code>mapaProdsHtml</code>, tocar uno lo saca). Debajo del mapa, la misma lista (<code>mapaRowHtml</code>), con la distancia si se sabe dónde estás y, con varios productos, cuál es.',
       `<div class="tcard ds__phone"><div class="ds__pins">${[
         [14, { l: st.lugares.get('l1') }], [34, { l: st.lugares.get('l2') }],

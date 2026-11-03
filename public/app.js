@@ -72,6 +72,7 @@ const inicial = (name) => (String(name || '?').trim()[0] || '?').toUpperCase();
 
 // ---------- Íconos (línea, 24×24) ----------
 const IC = {
+  merge: '<path d="M6 3v3a6 6 0 0 0 6 6"/><path d="M18 3v3a6 6 0 0 1-6 6v9"/><path d="M9 18l3 3 3-3"/>',
   home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
   homeFill: '<path d="M12 3.5l8.5 7.4V21h-6v-6h-5v6h-6V10.9z" fill="currentColor" stroke="none"/>',
   tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
@@ -825,8 +826,56 @@ function openLugar(id) {
       ${masBarato.length ? `<span class="setsub">Acá está más barato</span><div class="gcard">${masBarato.map(productoRowHtml).join('')}</div>` : ''}
       <span class="setsub">Tickets</span><div class="gcard">${tks.map(ticketRowHtml).join('')}</div>
       ${aca.length ? `<span class="setsub">Productos con precio acá (${aca.length})</span><div class="gcard">${aca.map(productoRowHtml).join('')}</div>` : ''}
-      ${lugarEditable(l) && l.direccion ? `<div class="prodfoot prodfoot--end"><button type="button" class="set__btn" data-lugar-edit="${esc(id)}">${ic('edit', 18)} Corregir el lugar</button></div>` : ''}`;
+      ${lugarEditable(l) ? `<div class="prodfoot prodfoot--end">${state.lugares.size > 1 ? `<button type="button" class="set__btn" data-lugar-juntar="${esc(id)}">${ic('merge', 18)} Es el mismo que otro</button>` : ''}${l.direccion ? `<button type="button" class="set__btn" data-lugar-edit="${esc(id)}">${ic('edit', 18)} Corregir el lugar</button>` : ''}</div>` : ''}`;
     },
+  });
+}
+// "Es el mismo que otro": el mismo local cargado dos veces (con y sin dirección, leído de
+// otra forma). Los otros lugares, primero los de la misma cadena; tocar uno los junta.
+function lugarJuntarHtml(id) {
+  const l = lugarDe(id);
+  const ck = normQ(l?.cadena || '');
+  const otros = [...state.lugares.values()].filter((x) => x.id !== id)
+    .sort((a, b) => lugarNombre(a).localeCompare(lugarNombre(b), 'es') || lugarDonde(a).localeCompare(lugarDonde(b), 'es'));
+  const fila = (x) => {
+    const donde = lugarDonde(x);
+    const n = state.tickets.filter((t) => t.lugar_id === x.id).length;
+    return `<button type="button" class="mrow txrow" data-juntar-con="${esc(x.id)}">
+      ${lugarIc(x)}
+      <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(x))}</span>
+        <span class="row__meta"><span class="movchips">${donde ? `<span class="chip">${esc(donde)}</span>` : '<span class="chip">Sin dirección</span>'}</span></span></span>
+      <span class="mrow__right"><span class="mrow__amt">${n} ${n === 1 ? 'ticket' : 'tickets'}</span></span>
+    </button>`;
+  };
+  const misma = otros.filter((x) => normQ(x.cadena || '') === ck);
+  const resto = otros.filter((x) => normQ(x.cadena || '') !== ck);
+  return `<p class="accf__hint">Elegí el lugar que es el mismo local: los tickets y los precios de los dos quedan en uno solo.</p>
+    ${misma.length ? `<span class="setsub">${esc(l?.cadena || 'La misma cadena')}</span><div class="gcard">${misma.map(fila).join('')}</div>` : ''}
+    ${resto.length ? `<span class="setsub">Otros lugares</span><div class="gcard">${resto.map(fila).join('')}</div>` : ''}`;
+}
+function openLugarJuntar(id) {
+  const l = lugarDe(id);
+  if (!l) return;
+  const sh = openSheet({
+    title: '¿Con cuál es el mismo?',
+    body: lugarJuntarHtml(id),
+    onMount: (el) => el.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-juntar-con]');
+      if (!b) return;
+      const o = lugarDe(b.dataset.juntarCon);
+      const ok = await askConfirm('¿Los junto?', {
+        text: `${lugarNombre(l)}${lugarDonde(l) ? `, ${lugarDonde(l)}` : ''} y ${lugarNombre(o)}${lugarDonde(o) ? `, ${lugarDonde(o)}` : ''} quedan en un solo lugar, con los tickets de los dos.`,
+        ok: 'Juntarlos', cancel: 'No', icon: 'warn',
+      });
+      if (!ok) return;
+      try {
+        const d = await apiFetch(`/api/lugares/${encodeURIComponent(id)}/juntar`, { method: 'POST', body: { con: o.id } });
+        sh.close();
+        await reload();
+        openLugar(d.juntado);
+        toast('✓ Quedaron en un solo lugar');
+      } catch (e2) { if (e2.status !== 401) toast(e2.message, { icon: 'error' }); }
+    }),
   });
 }
 // Corregir un lugar: sucursal, dirección y ciudad. Si con la dirección resulta que ya
@@ -2054,6 +2103,8 @@ document.addEventListener('click', (e) => {
   const vm = t.closest('[data-ver-mapa]');
   if (vm) { verEnMapa(vm.dataset.verMapa); return; }
   if (t.closest('[data-mapa-retry]')) { render(); return; }
+  const lj = t.closest('[data-lugar-juntar]');
+  if (lj) { openLugarJuntar(lj.dataset.lugarJuntar); return; }
   const le = t.closest('[data-lugar-edit]');
   if (le) { openLugarEdit(le.dataset.lugarEdit); return; }
   const cd = t.closest('[data-ciudad]');
@@ -2155,7 +2206,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

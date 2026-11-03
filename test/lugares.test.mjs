@@ -139,6 +139,26 @@ test('con y sin CUIT, la misma dirección es el mismo lugar: al cargar y al corr
   assert.notEqual(d.lugarId, a.lugarId);
 });
 
+test('es el mismo que otro: juntar dos lugares a mano, aunque no compartan dirección ni CUIT', async () => {
+  const a = await cargar(ana, { cuit: null, direccion: 'Calle 13 1500', ciudad: 'La Plata' });
+  const b = await cargar(ana, { cuit: null, cadena: 'Carrefour Market', direccion: null, punto_venta: '0777' });
+  assert.notEqual(a.lugarId, b.lugarId);
+  // Sólo quien puede corregirlo; con un lugar que existe y no consigo mismo.
+  assert.equal((await pedir(worker, beto, 'POST', `/api/lugares/${b.lugarId}/juntar`, { con: a.lugarId })).status, 404);
+  assert.equal((await pedir(worker, ana, 'POST', `/api/lugares/${b.lugarId}/juntar`, { con: b.lugarId })).status, 422);
+  assert.equal((await pedir(worker, ana, 'POST', `/api/lugares/${b.lugarId}/juntar`, { con: 'nada' })).status, 404);
+  const r = await pedir(worker, ana, 'POST', `/api/lugares/${b.lugarId}/juntar`, { con: a.lugarId });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.juntado, a.lugarId);
+  assert.equal(await lugar(b.lugarId), undefined);
+  const l = await lugar(a.lugarId);
+  assert.deepEqual([l.direccion, l.punto_venta], ['Calle 13 1500', '777']);
+  assert.equal((await db.sql('select count(*) as n from precios where lugar_id = ?1', [b.lugarId]))[0].n, 0);
+  // El próximo ticket por ese punto de venta ya cae en el que quedó.
+  const c = await cargar(ana, { cuit: null, cadena: 'Carrefour Market', punto_venta: '777' });
+  assert.equal(c.lugarId, a.lugarId);
+});
+
 test('una base de antes de la 0.3.0: suma las columnas y las claves de los lugares que ya estaban', async () => {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(`create table lugares (id text primary key, cadena text not null default '', sucursal text not null default '',
