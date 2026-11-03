@@ -67,8 +67,10 @@ Toda la UI y los textos van en castellano rioplatense.
 - **La pantalla Mapa** (`mapaHtml`, cuarta de la barra): los lugares con punto en un mapa de
   **OpenStreetMap con Leaflet** 1.9.4 (de cdnjs, con integrity, cargado recién al abrirla:
   `cargarLeaflet`; en oscuro los mosaicos van invertidos con un filtro). Cada punto
-  (`mapPinHtml`) es la inicial del lugar o, buscando un producto, su precio; el más barato
-  (`mapaMejor`, entre TODOS sus lugares, como en Productos) tonal con aro. Tocar un punto abre la
+  (`mapPinHtml`) es la inicial del lugar o, buscando productos, su precio; el más barato
+  (`mapaMejor`, entre TODOS sus lugares, como en Productos) tonal con aro. Se pueden elegir
+  **varios productos** (`mapa.prods`, `mapaProdsHtml`; «Todos los de «agua»» en el buscador):
+  cada lugar muestra el más barato de ellos (`mapaPorLugar`, por la forma de comparar más común). Tocar un punto abre la
   ficha del lugar. Debajo, la misma lista (`mapaRowHtml`) y, con un producto, "No están en el
   mapa" con sus lugares sin punto. **Cerca mío** pide el GPS (`ubicarme`; si el permiso ya está
   dado, centra solo) y ordena por distancia. "Ver en el mapa" de la ficha de un lugar abre esta

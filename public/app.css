@@ -157,6 +157,9 @@
   border-radius: var(--r-full); background: var(--card); }
 .mapa__selname { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mapa__sel .mrow__ic { width: 32px; height: 32px; }
+/* Los productos elegidos en el Mapa: tonal con aro (como la ciudad elegida); tocar uno lo saca. */
+.mapa__prod { display: inline-flex; align-items: center; gap: 6px; max-width: 80%; }
+.mapa__prod span:not([aria-hidden]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mapa__wrap { position: relative; }
 .mapa__map { position: relative; isolation: isolate; z-index: 0; height: min(56vh, 520px); border-radius: var(--r-l);
   overflow: hidden; background: var(--card-deep); font: inherit; }
