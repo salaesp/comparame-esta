@@ -75,6 +75,12 @@ function pintar() {
         { ean: '7793704000928', nombre: 'Yerba mate Playadito suave con palo 1 kg.', medida: 1000, medida_unidad: 'g', imagen: '', cadenas: ['Carrefour', 'Jumbo', 'Disco', 'Vea', 'ChangoMás', 'DIA'] },
         { ean: '7793704000010', nombre: 'Yerba Playadito Suave 1 Kg', medida: 1000, medida_unidad: 'g', imagen: '', cadenas: [] },
       ])}</div>`),
+    sec('Buscar en las webs', 'En el buscador de Productos, debajo de los tuyos (<code>webBusquedaHtml</code>): cuando dejás de escribir se busca en las webs de los súper, un producto por código (<code>webRowHtml</code>: su foto, la medida, en cuántas webs hay stock y desde cuánto). Tocarlo abre su ficha: la tuya si ya lo cargaste; si no, la de la web.',
+      `<div class="ds__phone">${c.webBusquedaHtml('buscando', 'yerba playadito')}${c.webBusquedaHtml([
+        { ean: '7793704000928', nombre: 'Yerba mate Playadito suave con palo 1 kg.', medida: 1000, medida_unidad: 'g', imagen: '', desde: 5190, cadenas: 6, ofertas: [{ cadena: 'Vea' }] },
+        { ean: '7793704000010', nombre: 'Yerba mate Playadito con palo 500 g.', medida: 500, medida_unidad: 'g', imagen: '', desde: 2690, cadenas: 1, ofertas: [{ cadena: 'DIA' }] },
+        { ean: '7793704000034', nombre: 'Yerba mate Playadito lata 500 g.', medida: 500, medida_unidad: 'g', imagen: '', desde: null, cadenas: 0, ofertas: [] },
+      ])}</div>`),
     sec('Lo que cambió', '<code>cambioRowHtml</code>: el último precio en un lugar contra el anterior en el mismo lugar.',
       `<div class="tcard ds__phone">${c.cambioRowHtml({ ultimo: st.precios[0], antes: st.precios[2], pct: 0.111 })}</div>`),
     sec('La revisión de un ticket', 'Cada renglón leído (<code>revRowHtml</code>): reconocido, nuevo, con una sugerencia o que no cierra.',

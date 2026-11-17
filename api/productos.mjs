@@ -5,6 +5,8 @@
 //                                  lo guardado de las tiendas online por su EAN (lib/online.mjs) y
 //                                  `online_buscando`: las cadenas a las que hay que preguntarles
 //   GET   /api/productos/:id/online -> les pregunta a esas cadenas y devuelve lo online
+//   GET   /api/productos/web?q=     -> buscar en las webs de los súper (lib/online.mjs buscarEnWebs)
+//   GET   /api/productos/web/:ean   -> lo de cada cadena con ese EAN (les pregunta a las que falten)
 //   GET   /api/productos/:id/parecidos -> sin EAN: los de las webs que se le parecen, para elegir
 //                                  cuál es (y ponerle su EAN con PATCH). La ficha trae los guardados
 //                                  (`parecidos`) o `parecidos_buscar` si hay que buscarlos. Lo que va
@@ -15,7 +17,7 @@ import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { visibles } from '../lib/amigos.mjs';
 import { normTexto, nombreKey, medidaDe, eanValido, tidyNombre } from '../lib/productos.mjs';
-import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, FOTO_SQL, parecidosGuardados, buscarParecidos } from '../lib/online.mjs';
+import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, FOTO_SQL, parecidosGuardados, buscarParecidos, buscarEnWebs, ONLINE_EAN_SQL, CADENAS_ONLINE } from '../lib/online.mjs';
 
 const COLS = 'id, nombre, marca, medida, medida_unidad, ean, creado_por';
 
@@ -24,6 +26,11 @@ export default async function (req) {
   if (!me) return error('no autenticado', 401);
   const [, , id, s3] = segs(req);
   if (!id && req.method === 'GET') return buscar(new URL(req.url).searchParams.get('q'));
+  if (id === 'web' && !s3 && req.method === 'GET') {
+    const resultados = await buscarEnWebs(String(new URL(req.url).searchParams.get('q') || '').slice(0, 100));
+    return json({ ok: true, resultados, cadenas: CADENAS_ONLINE.map((c) => c.nombre) });
+  }
+  if (id === 'web' && s3 && req.method === 'GET') return web(s3);
   if (id && !s3 && req.method === 'GET') return uno(me.userId, id);
   if (id && s3 === 'online' && req.method === 'GET') return online(id);
   if (id && s3 === 'parecidos' && req.method === 'GET') return parecidos(id);
@@ -77,6 +84,13 @@ async function online(id) {
   if (!p) return error('no encontrado', 404);
   if (p.ean) await actualizarOnline(p.ean);
   return json({ ok: true, online: await sql(ONLINE_SQL, [id]) });
+}
+
+async function web(ean) {
+  const e = eanValido(ean);
+  if (!e) return error('El código no es válido.', 422);
+  await actualizarOnline(e);
+  return json({ ok: true, online: await sql(ONLINE_EAN_SQL, [e]) });
 }
 
 // Lo que va por peso (todos sus precios en kg): fruta, verdura, fiambre. No tiene código.
@@ -139,4 +153,4 @@ async function editar(userId, id, b) {
 }
 
 
-export const config = { path: ['/api/productos', '/api/productos/:id', '/api/productos/:id/online', '/api/productos/:id/parecidos'] };
+export const config = { path: ['/api/productos', '/api/productos/web', '/api/productos/web/:ean', '/api/productos/:id', '/api/productos/:id/online', '/api/productos/:id/parecidos'] };

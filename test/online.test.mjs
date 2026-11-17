@@ -422,3 +422,50 @@ test('los parecidos se buscan una vez y quedan guardados; cambiar el nombre los 
   assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${banana.id}/parecidos`)).data.parecidos, []);
   assert.equal(n, 12);
 });
+
+test('buscar en las webs: uno por código, con el más barato con stock; se guarda unas horas y los precios quedan', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  const YERBA = fixture('vtex-buscar-yerba.json');
+  const enJumbo = copia(YERBA[0]); // la Playadito de 1 kg, más barata en Jumbo
+  enJumbo.items[0].sellers[0].commertialOffer.Price = 4990;
+  const urls = [];
+  setOnlineFetch(async (url) => {
+    urls.push(String(url));
+    const h = new URL(url).hostname;
+    return new Response(JSON.stringify(h === 'www.carrefour.com.ar' ? YERBA : h === 'www.jumbo.com.ar' ? [enJumbo] : []));
+  });
+
+  // Con menos de 3 letras, nada.
+  assert.deepEqual((await pedir(worker, ana, 'GET', '/api/productos/web?q=ye')).data.resultados, []);
+  assert.equal(urls.length, 0);
+
+  const r = await pedir(worker, ana, 'GET', `/api/productos/web?q=${encodeURIComponent('yerba playadito')}`);
+  assert.equal(r.status, 200);
+  assert.equal(urls.length, 6);
+  assert.ok(urls.some((u) => u.includes('ft=yerba%20playadito')));
+  assert.deepEqual(r.data.cadenas, TODAS);
+  const [primero, ...resto] = r.data.resultados;
+  // Primero el que tiene las dos palabras; en dos cadenas, desde lo de Jumbo.
+  assert.equal(primero.ean, '7793704000928');
+  assert.equal(primero.desde, 4990);
+  assert.equal(primero.cadenas, 2);
+  assert.deepEqual(primero.ofertas.map((o) => [o.cadena, o.precio]), [['Jumbo', 4990], ['Carrefour', YERBA[0].items[0].sellers[0].commertialOffer.Price]]);
+  assert.equal(resto.length, YERBA.length - 1);
+  // Lo que trajo quedó como precio online (la ficha y la foto ya están).
+  assert.equal((await sql('select count(*) as n from online_productos'))[0].n, YERBA.length + 1);
+
+  // La misma búsqueda escrita distinto, enseguida: no sale a las webs.
+  const r2 = await pedir(worker, ana, 'GET', `/api/productos/web?q=${encodeURIComponent('  Yerba PLAYADITO ')}`);
+  assert.equal(urls.length, 6);
+  assert.deepEqual(r2.data.resultados.map((x) => x.ean), r.data.resultados.map((x) => x.ean));
+
+  // La ficha de la web: les pregunta a las que faltan y devuelve todo, con stock primero.
+  urls.length = 0;
+  const f = await pedir(worker, ana, 'GET', '/api/productos/web/7793704000928');
+  assert.equal(f.status, 200);
+  assert.equal(urls.length, 6); // ninguna se había consultado por el código
+  assert.deepEqual(f.data.online.map((o) => o.cadena), ['Jumbo', 'Carrefour']);
+  assert.equal((await pedir(worker, ana, 'GET', '/api/productos/web/123')).status, 422);
+});

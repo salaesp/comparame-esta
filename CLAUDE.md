@@ -122,6 +122,13 @@ Toda la UI y los textos van en castellano rioplatense.
   solo pedido por cadena (`actualizarOnline`). `/api/boot` también busca en segundo plano los suyos sin foto. El
   código de uno que no lo tiene se lo pone también quien lo ve (un amigo): sólo eso, y sin pisar uno que ya está.
   Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
+- **Buscar en las webs** desde el buscador de Productos: debajo de tus productos, cuando dejás de escribir
+  (`WEB_ESPERA_MS`, 3 letras o más), `GET /api/productos/web?q=` (`buscarEnWebs`) busca por texto en las seis cadenas
+  y devuelve uno por EAN (`agruparBusqueda`: sus `ofertas` por cadena, `desde` el más barato con stock; primero los
+  que tienen todas las palabras, después los que están en más cadenas), hasta `BUSQUEDA_MAX` (20). Se guarda
+  `BUSQUEDA_HORAS` (6) en `online_busquedas`, y lo que trae queda en `online_productos`. `webBusquedaHtml` /
+  `webRowHtml`; tocar uno abre tu ficha si ya lo tenés (por el EAN) o la de la web (`openWebProducto`,
+  `GET /api/productos/web/:ean`: les pregunta a las cadenas que falten). No suma nada al catálogo.
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 

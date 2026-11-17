@@ -30,10 +30,11 @@ a.mrow { text-decoration: none; color: inherit; }
    fotos vienen con fondo blanco: van sobre una tarjeta clara también en oscuro. */
 .prodfoto { overflow: hidden; background: var(--surface-high); padding: 2px; }
 .prodfoto img { width: 100%; height: 100%; object-fit: contain; border-radius: calc(var(--r-s) - 2px); }
-.prodhero--foto { position: relative; padding-right: calc(96px + var(--sp-6)); }
+.prodhero.prodhero--foto { position: relative; padding-right: calc(96px + var(--sp-6)); }
 .prodhero__foto { position: absolute; right: var(--sp-4); top: 50%; translate: 0 -50%; width: 96px; height: 96px;
   object-fit: contain; border-radius: var(--r-m); }
 .parecidos__q { margin: var(--sp-2) 0; text-align: left; }
+#prod-web .setsub { display: block; margin-top: var(--sp-4); }
 .parecidos__no { margin: var(--sp-2) 0 var(--sp-1); align-self: flex-start; }
 /* Un renglón que no cierra (importe > cantidad × precio): borde coral. */
 .mrow--warn { box-shadow: inset 3px 0 0 var(--neg); }

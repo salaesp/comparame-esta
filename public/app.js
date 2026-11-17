@@ -631,7 +631,8 @@ function productosHtml() {
   return `<label class="buscador"><span class="sr-only">Buscar un producto</span>${ic('search', 20)}
       <input type="search" id="buscar-q" placeholder="Buscá un producto" autocomplete="off" value="${esc(state.q)}"></label>
     ${ciudadesHtml()}
-    <div class="tcard" id="prod-list">${productosListHtml()}</div>`;
+    <div class="tcard" id="prod-list">${productosListHtml()}</div>
+    <div id="prod-web">${webBusquedaHtml()}</div>`;
 }
 function productosListHtml(todos = resumenProductos(ciudadActiva())) {
   const words = normQ(state.q).split(/\s+/).filter(Boolean);
@@ -650,14 +651,97 @@ function wireBuscador() {
     state.q = q.value;
     $('prod-list').innerHTML = productosListHtml();
     hydrateIcons($('prod-list'));
+    clearTimeout(web.timer);
+    web.timer = setTimeout(() => buscarWeb(state.q), WEB_ESPERA_MS);
   });
+  if (state.q) buscarWeb(state.q);
+}
+
+// ---------- Buscar en las webs (debajo de tus productos) ----------
+// Cuando dejás de escribir (WEB_ESPERA_MS) y con WEB_MIN_LETRAS o más, se busca en las webs
+// de los súper (GET /api/productos/web, lib/online.mjs buscarEnWebs): un producto por código,
+// con el más barato con stock. Tocarlo abre su ficha (la tuya si ya lo tenés; si no, la de la
+// web). No suma nada al catálogo.
+const WEB_ESPERA_MS = 500;
+const WEB_MIN_LETRAS = 3;
+const web = { q: '', estado: null, timer: 0, seq: 0, cache: new Map(), porEan: new Map(), cadenas: [] };
+const webKey = (q) => normQ(q).replace(/[^a-z0-9]+/g, ' ').trim();
+async function buscarWeb(q) {
+  const k = webKey(q);
+  const pintar = () => { const el = $('prod-web'); if (el) { el.innerHTML = webBusquedaHtml(); hydrateIcons(el); } };
+  if (k.replace(/ /g, '').length < WEB_MIN_LETRAS) { web.q = ''; web.estado = null; pintar(); return; }
+  if (k === web.q && Array.isArray(web.estado)) return;
+  const seq = ++web.seq;
+  web.q = k;
+  web.estado = web.cache.get(k) || 'buscando';
+  pintar();
+  if (web.cache.has(k)) return;
+  try {
+    const d = await apiFetch(`/api/productos/web?q=${encodeURIComponent(q.trim())}`);
+    web.cache.set(k, d.resultados || []);
+    web.cadenas = d.cadenas || web.cadenas;
+    for (const r of d.resultados || []) web.porEan.set(r.ean, r);
+    if (seq === web.seq) { web.estado = d.resultados || []; pintar(); }
+  } catch {
+    if (seq === web.seq) { web.estado = []; pintar(); }
+  }
+}
+function webBusquedaHtml(estado = web.estado, q = state.q) {
+  if (estado === 'buscando') return `<span class="setsub">En las webs de los súper</span><div class="gcard">${onlineBuscandoHtml(`Buscando «${q.trim()}» en las webs…`)}</div>`;
+  if (!Array.isArray(estado) || !estado.length) return '';
+  return `<span class="setsub">En las webs de los súper</span><div class="gcard">${estado.map(webRowHtml).join('')}</div>
+    <p class="note">Son los precios de las webs: en la sucursal pueden ser otros.</p>`;
+}
+function webRowHtml(r) {
+  const med = medidaLabel(r.medida, r.medida_unidad);
+  const chips = [med ? `<span class="chip">${esc(med)}</span>` : '',
+    r.cadenas ? `<span class="chip">${r.cadenas > 1 ? `en ${r.cadenas} webs` : `en ${esc(r.ofertas[0].cadena)}`}</span>` : '<span class="chip">Sin stock</span>'].join('');
+  return `<button type="button" class="mrow txrow${r.desde == null ? ' mrow--old' : ''}" data-web-ean="${esc(r.ean)}">
+    ${prodIcHtml({ foto: r.imagen }, 'search')}
+    <span class="mrow__text"><span class="mrow__title">${esc(r.nombre)}</span>
+      <span class="row__meta"><span class="movchips">${chips}</span></span></span>
+    <span class="mrow__right">${r.desde != null ? `<span class="mrow__amt">${fmtMoney(r.desde)}</span><span class="row__of">desde</span>` : ''}</span>
+  </button>`;
+}
+// La ficha de un producto de la web: si ya está en tus productos (por el código), la tuya.
+function abrirWeb(ean) {
+  const mio = [...state.productos.values()].find((p) => p.ean === ean);
+  if (mio) { openProducto(mio.id); return; }
+  const r = web.porEan.get(ean);
+  if (r) openWebProducto(r);
+}
+async function openWebProducto(r) {
+  const ahora = new Date().toISOString();
+  let data = { online: r.ofertas.map((o) => ({ ...o, visto_at: ahora })), buscando: web.cadenas.filter((c) => !r.ofertas.some((o) => o.cadena === c)) };
+  const p = { medida: r.medida, medida_unidad: r.medida_unidad, foto: r.imagen };
+  const paint = () => {
+    const mejor = data.online.find((o) => o.disponible);
+    return `${modalHead(r.nombre, medidaLabel(r.medida, r.medida_unidad))}
+      ${mejor ? `<div class="prodhero${p.foto ? ' prodhero--foto' : ''}">
+          ${p.foto ? `<img class="prodhero__foto" src="${esc(p.foto)}" alt="" referrerpolicy="no-referrer">` : ''}
+          <span class="lbl">Más barato online</span>
+          <span class="prodhero__amt">${fmtMoney(mejor.precio)}</span>
+          <span class="prodhero__sub">en ${esc(mejor.cadena)}${data.online.filter((o) => o.disponible).length > 1 ? ` · ${fmtMoney(data.online.filter((o) => o.disponible).at(-1).precio - mejor.precio)} menos que en la más cara` : ''}</span>
+        </div>` : '<p class="note">Ninguna web lo tiene en stock.</p>'}
+      <span class="setsub">En las webs de los súper</span>
+      <div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>
+      <p class="note">Son los precios de las webs: en la sucursal pueden ser otros. Todavía no lo cargaste en ningún ticket.</p>
+      <div class="prodfoot"><span class="chip">Código ${esc(r.ean)}</span></div>`;
+  };
+  openModal({ render: paint });
+  try {
+    const d = await apiFetch(`/api/productos/web/${encodeURIComponent(r.ean)}`);
+    if (d.online?.length) data = { ...data, online: d.online };
+  } catch { /* queda lo de la búsqueda */ }
+  data = { ...data, buscando: [] };
+  if (modalState?.render === paint) repaintModal();
 }
 
 // Un precio de la web de una cadena (lib/online.mjs): abre el producto en su web. Sin
 // stock, apagado. La fecha es la última vez que la web lo mostró.
 function onlineRowHtml(o, p) {
   const chips = [
-    `<span class="chip">${esc(fmtFecha(isoDate(new Date(o.visto_at))))}</span>`,
+    o.visto_at ? `<span class="chip">${esc(fmtFecha(isoDate(new Date(o.visto_at))))}</span>` : '',
     o.disponible ? '' : '<span class="chip">Sin stock</span>',
     o.disponible && o.precio_lista ? `<span class="chip">antes ${fmtMoney(o.precio_lista)}</span>` : '',
     o.promos ? `<span class="chip chip--warn">${esc(o.promos)}</span>` : '',
@@ -2314,6 +2398,8 @@ document.addEventListener('click', (e) => {
   if (td) { deleteTicket(td.dataset.ticketDel); return; }
   const pe = t.closest('[data-prod-edit]');
   if (pe) { openProductoEdit(pe.dataset.prodEdit); return; }
+  const we = t.closest('[data-web-ean]');
+  if (we) { abrirWeb(we.dataset.webEan); return; }
   const pa = t.closest('[data-parecido]');
   if (pa) { fichaProducto?.elegir(pa.dataset.parecido); return; }
   if (t.closest('[data-parecidos-no]')) { fichaProducto?.no(); return; }
@@ -2403,7 +2489,7 @@ function registerSW() {
 // pinta cada componente con su función de verdad (public/design-system/ds.js).
 if (window.__DS__) {
   window.comparame = {
-    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, prodIcHtml, onlineRowHtml, onlineBuscandoHtml, parecidosHtml, revRowHtml,
+    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, prodIcHtml, onlineRowHtml, webBusquedaHtml, webRowHtml, onlineBuscandoHtml, parecidosHtml, revRowHtml,
     controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml, fotosAddHtml,
     setRev: (r) => { rev = r; },
   };
