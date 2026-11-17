@@ -128,7 +128,7 @@ test('la ficha se abre sin esperar a las webs; …/online trae lo de Carrefour, 
 
   let r = await abrir(worker, ana, p.id);
   assert.deepEqual(urls.map((u) => new URL(u).hostname).sort(), HOSTS);
-  assert.ok(urls.includes('https://www.carrefour.com.ar/api/catalog_system/pub/products/search?fq=alternateIds_Ean:7798133500605'));
+  assert.ok(urls.includes('https://www.carrefour.com.ar/api/catalog_system/pub/products/search?fq=alternateIds_Ean:7798133500605')); // uno solo: sin _from/_to
   assert.equal(r.online.length, 1);
   assert.equal(r.online[0].cadena, 'Carrefour');
   assert.equal(r.online[0].precio, 3999);
@@ -260,4 +260,59 @@ test('lo sin stock va al final aunque su precio (el de cuando se vendía) sea el
   tiendas({ 'www.jumbo.com.ar': [leche], 'www.vea.com.ar': [vieja] });
   const r = await abrir(worker, ana, p.id);
   assert.deepEqual(r.online.map((o) => [o.cadena, o.precio, o.disponible]), [['Jumbo', 3031, 1], ['Vea', 700, 0]]);
+});
+
+test('al abrir la app, los productos con código y sin foto se buscan solos: un pedido por cadena con todos', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  const hoy = new Date().toISOString().slice(0, 10);
+  const conFoto = (n) => { const x = porNombre(n); x.items[0].images = [{ imageUrl: `https://carrefourar.vteximg.com.br/arquivos/ids/1/${x.items[0].ean}.jpg` }]; return x; };
+  // Dos productos con código en un ticket de Ana (los que trae /api/boot) y uno sin código.
+  const [t] = await sql("insert into tickets (user_id, fecha) values (?1, ?2) returning id", [ana.id, hoy]);
+  const prods = [];
+  for (const [nombre, ean] of [['Pepitas', PEPITAS], ['Leche', LECHE], ['Banana', '']]) {
+    const [p] = await sql('insert into productos (nombre, ean) values (?1, ?2) returning id', [nombre, ean]);
+    await sql("insert into precios (ticket_id, user_id, producto_id, fecha, texto, cantidad, importe, pagado, precio_unit) values (?1, ?2, ?3, ?4, 'x', 1, 100, 100, 100)", [t.id, ana.id, p.id, hoy]);
+    prods.push(p);
+  }
+  const urls = [];
+  setOnlineFetch(async (url) => {
+    urls.push(String(url));
+    const u = new URL(url);
+    return new Response(JSON.stringify(u.hostname === 'www.carrefour.com.ar' ? [conFoto('Pepitas')] : u.hostname === 'www.jumbo.com.ar' ? [porNombre('Leche Uat Serenisima', JUMBO)] : []));
+  });
+
+  let b = await pedir(worker, ana, 'GET', '/api/boot');
+  assert.equal(b.status, 200);
+  assert.equal(urls.length, 6); // uno por cadena, con los dos códigos
+  const aCarrefour = new URL(urls.find((u) => u.includes('carrefour')));
+  assert.deepEqual(aCarrefour.searchParams.getAll('fq').sort(), [`alternateIds_Ean:${LECHE}`, `alternateIds_Ean:${PEPITAS}`]);
+  assert.equal(aCarrefour.searchParams.get('_to'), '3');
+  // Lo de Jumbo (sin foto) y lo de Carrefour (con foto) quedó guardado; las consultas, por EAN.
+  assert.equal((await sql('select count(*) as n from online_productos'))[0].n, 2);
+  const cs = await sql("select ean, encontrados from online_consultas where cadena = 'Jumbo' order by ean");
+  assert.deepEqual(cs.map((x) => [x.ean, x.encontrados]), [[LECHE, 1], [PEPITAS, 0]].sort());
+
+  // En el próximo boot, las Pepitas ya tienen foto y no se vuelven a buscar (la leche se
+  // consultó hace nada en todas: tampoco, aunque no tenga foto).
+  b = await pedir(worker, ana, 'GET', '/api/boot');
+  assert.equal(urls.length, 6);
+  const foto = Object.fromEntries(b.data.productos.map((p) => [p.nombre, p.foto]));
+  assert.equal(foto.Pepitas, `https://carrefourar.vteximg.com.br/arquivos/ids/1/${PEPITAS}.jpg`);
+  assert.equal(foto.Leche, null);
+  assert.equal(foto.Banana, null);
+  // La ficha también trae la foto.
+  assert.equal((await pedir(worker, ana, 'GET', `/api/productos/${prods[0].id}`)).data.producto.foto, foto.Pepitas);
+});
+
+test('lo consultado antes de guardar las fotos se vuelve a consultar (con la versión nueva del schema)', async () => {
+  const { sql } = await baseNueva();
+  const { MIGRATIONS } = await import('../lib/schema.mjs');
+  const ahora = new Date().toISOString();
+  await sql("insert into online_productos (cadena, sku, ean, nombre, precio, visto_at, cambio_at) values ('Carrefour', '1', ?1, 'Pepitas', 3999, ?2, ?2)", [PEPITAS, ahora]);
+  await sql("insert into online_productos (cadena, sku, ean, nombre, precio, imagen, visto_at, cambio_at) values ('Jumbo', '2', ?1, 'Leche', 3031, 'https://x/y.jpg', ?2, ?2)", [LECHE, ahora]);
+  for (const c of ['Carrefour', 'Jumbo']) for (const e of [PEPITAS, LECHE]) await sql('insert into online_consultas (cadena, ean, consultado_at) values (?1, ?2, ?3)', [c, e, ahora]);
+  await sql(MIGRATIONS.find((m) => m.startsWith('delete from online_consultas')));
+  assert.deepEqual((await sql('select distinct ean from online_consultas')).map((r) => r.ean), [LECHE]);
 });

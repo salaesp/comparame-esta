@@ -3,7 +3,7 @@
 // los productos y lugares de esos precios). Las pantallas se arman en el cliente con
 // esto; el historial más viejo de un producto se pide al abrirlo (/api/productos/:id).
 // 401 sin sesión: la app muestra el login.
-import { FOTO_SQL } from '../lib/online.mjs';
+import { FOTO_SQL, actualizarOnline } from '../lib/online.mjs';
 import { json, error } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { txBatch } from '../lib/db.mjs';
@@ -36,6 +36,10 @@ export default async function (req, env, ctx) {
   if (!yo) return error('no autenticado', 401); // la cuenta se borró
   // Los lugares que todavía no se buscaron en el mapa (los de antes, o si Georef no contestó).
   await enSegundoPlano(ctx, ubicarLugares());
+  // Los productos con código y sin foto: se buscan en las webs (precio y foto) aunque no se
+  // abra su ficha, de a ONLINE_POR_VEZ y en un pedido por cadena. La foto llega en el próximo boot.
+  const sinFoto = productos.filter((p) => p.ean && !p.foto).map((p) => p.ean);
+  if (sinFoto.length) await enSegundoPlano(ctx, actualizarOnline(sinFoto));
   return json({
     ok: true,
     user: yo,

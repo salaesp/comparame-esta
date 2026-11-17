@@ -113,7 +113,9 @@ Toda la UI y los textos van en castellano rioplatense.
   marca y medida, palabras en común), con su foto y dónde hay stock (sin precio). Nunca se elige solo: tocar uno
   le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código. **La foto** de un
   producto es la de las webs con su EAN (`online_productos.imagen`, `FOTO_SQL` en `/api/boot` y en la ficha; primero
-  la de una con stock): en la lista (`prodIcHtml`) y en la ficha, al lado del precio. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
+  la de una con stock): en la lista (`prodIcHtml`) y en la ficha, al lado del precio. Para que la tengan sin abrir
+  la ficha, `/api/boot` busca en segundo plano los productos con código y sin foto (`actualizarOnline` con varios
+  EAN: hasta `ONLINE_POR_VEZ` (30), en un solo pedido por cadena); la foto llega en el próximo boot. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 
@@ -154,7 +156,8 @@ rutea `/api/*` a los handlers de `api/` (`(Request) → Response`, cada uno con 
 `export const config = { path }`), la lógica pura vive en `lib/` y `public/` se sirve como assets.
 **D1** (`lib/db.mjs`: `sql`, `txBatch`; SQLite directo con `?1`), el schema se aplica solo (hash en
 `schema_meta`, la guarda viaja en el primer batch). Una columna nueva en una tabla que ya existe va
-en su create table y también en `MIGRATIONS` (las ALTER que faltan corren con la versión). `/api/boot` trae todo lo de los últimos
+en su create table y también en `MIGRATIONS` (las ALTER que faltan corren con la versión; lo que no es una ALTER
+corre con cada versión nueva del schema, como volver a consultar lo online sin foto). `/api/boot` trae todo lo de los últimos
 `BOOT_DIAS` (180) días y las pantallas se arman en memoria; la ficha de un producto pide su
 historial entero.
 
