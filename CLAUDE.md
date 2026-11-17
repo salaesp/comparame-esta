@@ -111,7 +111,9 @@ Toda la UI y los textos van en castellano rioplatense.
   `GET /api/productos/:id/parecidos` (`parecidosOnline`) lo busca por texto (`ft=`, marca + nombre + medida) en
   todas las cadenas y devuelve hasta `PARECIDOS_MAX` (3) con EAN, filtrados y ordenados con `candidatos` (misma
   marca y medida, palabras en común), con su foto y dónde hay stock (sin precio). Nunca se elige solo: tocar uno
-  le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
+  le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código. **La foto** de un
+  producto es la de las webs con su EAN (`online_productos.imagen`, `FOTO_SQL` en `/api/boot` y en la ficha; primero
+  la de una con stock): en la lista (`prodIcHtml`) y en la ficha, al lado del precio. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 

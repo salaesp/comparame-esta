@@ -13,7 +13,7 @@ import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { visibles } from '../lib/amigos.mjs';
 import { normTexto, nombreKey, medidaDe, eanValido, tidyNombre } from '../lib/productos.mjs';
-import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, parecidosOnline } from '../lib/online.mjs';
+import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, FOTO_SQL, parecidosOnline } from '../lib/online.mjs';
 
 const COLS = 'id, nombre, marca, medida, medida_unidad, ean, creado_por';
 
@@ -38,14 +38,14 @@ async function buscar(q) {
   return json({ ok: true, productos });
 }
 
-const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unidad, precio, precio_lista, precio_medida, promos, disponible, visto_at, cambio_at
+const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unidad, precio, precio_lista, precio_medida, promos, disponible, imagen, visto_at, cambio_at
     from online_productos
    where ean <> '' and ean = (select ean from productos where id = ?1)
    order by disponible desc, coalesce(precio_medida, precio), cadena`;
 
 async function uno(userId, id) {
   const [[p], precios, online, consultas] = await txBatch([
-    [`select ${COLS} from productos where id = ?1`, [id]],
+    [`select ${COLS}, ${FOTO_SQL} from productos where id = ?1`, [id]],
     [`select pr.id, pr.ticket_id, pr.user_id, pr.lugar_id, pr.fecha, pr.texto, pr.cantidad, pr.unidad, pr.precio_lista,
              pr.importe, pr.descuento, pr.pagado, pr.precio_unit, pr.precio_medida,
              l.cadena, l.sucursal, l.direccion, l.ciudad

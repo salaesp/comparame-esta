@@ -3,6 +3,7 @@
 // los productos y lugares de esos precios). Las pantallas se arman en el cliente con
 // esto; el historial más viejo de un producto se pide al abrirlo (/api/productos/:id).
 // 401 sin sesión: la app muestra el login.
+import { FOTO_SQL } from '../lib/online.mjs';
 import { json, error } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { txBatch } from '../lib/db.mjs';
@@ -24,7 +25,7 @@ export default async function (req, env, ctx) {
     [`select id, ticket_id, user_id, lugar_id, producto_id, fecha, orden, texto, cantidad, unidad, precio_lista, importe,
              descuento, pagado, precio_unit, precio_medida
         from precios where user_id in ${V} and fecha >= ?2`, [me.userId, desde]],
-    [`select id, nombre, marca, medida, medida_unidad, ean, creado_por from productos
+    [`select id, nombre, marca, medida, medida_unidad, ean, creado_por, ${FOTO_SQL} from productos
        where id in (select producto_id from precios where user_id in ${V} and fecha >= ?2)`, [me.userId, desde]],
     [`select id, cadena, sucursal, direccion, ciudad, punto_venta, cuit, lat, lon, geo_at, creado_por from lugares
        where id in (select lugar_id from tickets where user_id in ${V} and fecha >= ?2)`, [me.userId, desde]],

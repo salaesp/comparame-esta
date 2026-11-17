@@ -11,7 +11,7 @@ c.setData({
   amigos: [{ id: 'juli', name: 'Juli Gómez', email: 'juli@ejemplo.com', picture: '' }],
   lugares: [{ id: 'l1', cadena: 'Carrefour', sucursal: '', direccion: 'Av. Cabildo 2200', ciudad: 'CABA', lat: -34.561085, lon: -58.457507, geo_at: '2026-10-26' }, { id: 'l2', cadena: 'Coto', sucursal: 'Cabildo', direccion: 'Av. Cabildo 545', ciudad: 'CABA' },
     { id: 'l3', cadena: 'Carrefour', sucursal: '', direccion: '', ciudad: 'Rosario', punto_venta: '8188' }],
-  productos: [{ id: 'p1', nombre: 'Fideos tirabuzón sin TACC', marca: 'Matarazzo', medida: 500, medida_unidad: 'g' }, { id: 'p2', nombre: 'Banana', marca: '', medida: null, medida_unidad: '' }],
+  productos: [{ id: 'p1', nombre: 'Fideos tirabuzón sin TACC', marca: 'Matarazzo', medida: 500, medida_unidad: 'g', ean: '7790070336224', foto: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="white"/><rect x="12" y="6" width="16" height="28" rx="3" fill="#e8b33c"/><rect x="12" y="14" width="16" height="8" fill="#2b5fa8"/></svg>') }, { id: 'p2', nombre: 'Banana', marca: '', medida: null, medida_unidad: '' }],
   tickets: [{ id: 't1', user_id: 'yo', lugar_id: 'l1', fecha: dia(1), pagado: 208263.5, n_renglones: 19 }, { id: 't2', user_id: 'juli', lugar_id: 'l2', fecha: dia(3), pagado: 45300, n_renglones: 4 }, { id: 't3', user_id: 'yo', lugar_id: 'l3', fecha: dia(9), pagado: 12800, n_renglones: 3 }],
   precios: [
     { id: 'a', ticket_id: 't1', user_id: 'yo', lugar_id: 'l1', producto_id: 'p1', fecha: dia(1), cantidad: 6, unidad: 'u', precio_unit: 4999, precio_medida: 9998, pagado: 29994 },
@@ -48,7 +48,7 @@ function pintar() {
       `<div class="tcard ds__type"><p style="font-size:var(--t-display-m);font-weight:800;letter-spacing:var(--tracking-tight)">$8.900</p><p style="font-size:var(--t-headline-s);font-weight:700">¿Dónde está más barato?</p><p style="font-size:var(--t-body-l)">Fideos tirabuzón sin TACC · 500 g</p><p class="lbl">Últimos tickets</p></div>`),
     sec('Un ticket', '<code>ticketRowHtml</code>: el lugar, quién lo cargó, cuántos productos y cuándo; a la derecha lo pagado.',
       `<div class="tcard ds__phone">${st.tickets.map(c.ticketRowHtml).join('')}</div>`),
-    sec('Un producto', '<code>productoRowHtml</code>: dónde está más barato (sólo si hay con qué comparar) y el precio por kg, litro o unidad.',
+    sec('Un producto', '<code>productoRowHtml</code>: dónde está más barato (sólo si hay con qué comparar) y el precio por kg, litro o unidad. Con la foto de las webs de los súper (<code>prodIcHtml</code>, la de un producto con código que se buscó online), en lugar del ícono.',
       `<div class="tcard ds__phone">${c.productoRowHtml(resumen('p1'))}${c.productoRowHtml(resumen('p2'))}</div>`),
     sec('Lugares', '<code>lugaresHtml</code>: cada lugar con dónde queda (<code>lugarDonde</code>: la dirección y la ciudad; sin dirección, su punto de venta). Con lugares de más de una ciudad, arriba el filtro (<code>ciudadesHtml</code>): la elegida tonal con aro.',
       `<div class="ds__phone" style="display:flex;flex-direction:column;gap:14px">${c.lugaresHtml()}</div>`),

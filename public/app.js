@@ -569,6 +569,11 @@ function ticketRowHtml(t) {
   </button>`;
 }
 // Un producto como fila: dónde está más barato y cuánto.
+// La foto de un producto (la de las webs de los súper, lib/online.mjs) en el lugar del ícono.
+function prodIcHtml(p, fallback = 'tag') {
+  return p?.foto ? `<span class="mrow__ic prodfoto" aria-hidden="true"><img src="${esc(p.foto)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>`
+    : `<span class="mrow__ic" aria-hidden="true">${ic(fallback, 20)}</span>`;
+}
 function productoRowHtml(r) {
   const p = r.producto;
   const m = r.mejor;
@@ -581,7 +586,7 @@ function productoRowHtml(r) {
     : `<span class="chip">Sólo en ${cadena}</span>`;
   const pr = m ? m.precio : r.ultimo;
   return `<button type="button" class="mrow txrow" data-producto="${esc(p.id)}">
-    <span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
+    ${prodIcHtml(p)}
     <span class="mrow__text"><span class="mrow__title">${esc(productoNombre(p))}${sub ? ` <span class="prod__medida">${esc(sub)}</span>` : ''}</span>
       <span class="row__meta"><span class="movchips">${meta}</span></span></span>
     <span class="mrow__right"><span class="mrow__amt${m ? '' : ' amt-old'}">${fmtMoney(precioDe(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
@@ -694,7 +699,7 @@ function parecidoRowHtml(x) {
   const donde = x.cadenas.length ? `En ${enumerar(x.cadenas.length > 3 ? [...x.cadenas.slice(0, 2), `${x.cadenas.length - 2} más`] : x.cadenas)}` : 'Sin stock';
   const med = medidaLabel(x.medida, x.medida_unidad);
   return `<button type="button" class="mrow txrow" data-parecido="${esc(x.ean)}">
-    <span class="mrow__ic parecido__img" aria-hidden="true">${x.imagen ? `<img src="${esc(x.imagen)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ic('search', 20)}</span>
+    ${prodIcHtml({ foto: x.imagen }, 'search')}
     <span class="mrow__text"><span class="mrow__title">${esc(x.nombre)}</span>
       <span class="row__meta"><span class="movchips">${med ? `<span class="chip">${esc(med)}</span>` : ''}<span class="chip">${esc(donde)}</span></span></span></span>
   </button>`;
@@ -730,7 +735,8 @@ async function openProducto(pid) {
     };
     const hist = [...data.precios].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
     return `${modalHead(productoNombre(p), productoSub(p))}
-      ${!mejor && otras.length ? `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días en ${esc(ciudad)}.</p>` : mejor ? `<div class="prodhero">
+      ${!mejor && otras.length ? `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días en ${esc(ciudad)}.</p>` : mejor ? `<div class="prodhero${p.foto ? ' prodhero--foto' : ''}">
+          ${p.foto ? `<img class="prodhero__foto" src="${esc(p.foto)}" alt="" referrerpolicy="no-referrer">` : ''}
           <span class="lbl">${frescos.length > 1 ? 'Más barato hoy' : 'Último precio'}</span>
           <span class="prodhero__amt">${fmtMoney(precioDe(mejor.precio))}</span>
           <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(precioDe(frescos[frescos.length - 1].precio) - precioDe(mejor.precio))} menos que en el más caro` : ''}</span>
@@ -755,6 +761,7 @@ async function openProducto(pid) {
       const d = await apiFetch(url);
       data = { ...data, producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [] };
       state.productos.set(pid, d.producto);
+      ponerFoto();
       pintar();
     } catch (e) {
       if (e.status !== 401 && !data.producto) toast(e.message, { icon: 'error' });
@@ -766,7 +773,16 @@ async function openProducto(pid) {
       data = { ...data, online: o.online || [] };
     } catch { /* sin las webs: queda lo guardado */ }
     data = { ...data, buscando: [] };
+    ponerFoto();
     pintar();
+  }
+  // Sin foto todavía, la de lo que acaban de devolver las webs (y que la lista también la muestre).
+  function ponerFoto() {
+    const foto = data.producto?.foto || [...data.online].sort((a, b) => b.disponible - a.disponible).find((o) => o.imagen)?.imagen;
+    if (!foto || data.producto.foto === foto) return;
+    data = { ...data, producto: { ...data.producto, foto } };
+    state.productos.set(pid, data.producto);
+    if (state.view === 'productos' && $('prod-list')) { $('prod-list').innerHTML = productosListHtml(); hydrateIcons($('prod-list')); }
   }
   fichaProducto = {
     async buscarParecidos() {
@@ -783,8 +799,9 @@ async function openProducto(pid) {
     async elegir(ean) {
       try {
         const d = await apiFetch(url, { method: 'PATCH', body: { ean } });
-        state.productos.set(pid, d.producto);
-        data = { ...data, producto: d.producto, parecidos: null };
+        const foto = (Array.isArray(data.parecidos) && data.parecidos.find((x) => x.ean === ean)?.imagen) || '';
+        data = { ...data, producto: { ...d.producto, foto }, parecidos: null };
+        state.productos.set(pid, data.producto);
         toast('Ahora se compara por su código en todas las webs', { lead: 'Listo', icon: 'ok' });
         cargar();
       } catch (e) {
@@ -2383,7 +2400,7 @@ function registerSW() {
 // pinta cada componente con su función de verdad (public/design-system/ds.js).
 if (window.__DS__) {
   window.comparame = {
-    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, onlineRowHtml, onlineBuscandoHtml, parecidosHtml, revRowHtml,
+    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, prodIcHtml, onlineRowHtml, onlineBuscandoHtml, parecidosHtml, revRowHtml,
     controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml, fotosAddHtml,
     setRev: (r) => { rev = r; },
   };
