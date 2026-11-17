@@ -39,6 +39,8 @@ export async function baseNueva() {
   db.resetSchemaCheck();
   // Los tests nunca salen a Georef: por defecto no encuentra nada (test/geo.test.mjs pone otro).
   (await import('../../lib/geo.mjs')).setGeoFetch(async () => new Response('{"direcciones":[]}'));
+  // Ni a las tiendas online: por defecto no tienen nada (test/online.test.mjs pone otras).
+  (await import('../../lib/online.mjs')).setOnlineFetch(async () => new Response('[]'));
   await db.sql('select 1');
   return { sqlite, ...db };
 }

@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.9.0",
+    "fecha": "2026-11-17",
+    "notas": [
+      "En la ficha de un producto con código de barras aparece su precio en las webs de Carrefour, Jumbo, Disco y Vea, del más barato al más caro, con la promo si tiene y cuándo se vio. Tocalo para abrirlo allá."
+    ]
+  },
+  {
     "version": "0.8.0",
     "fecha": "2026-11-17",
     "notas": [

@@ -648,9 +648,28 @@ function wireBuscador() {
   });
 }
 
-// La ficha de un producto: ¿dónde está más barato? Con el historial entero del server.
+// Un precio de la web de una cadena (lib/online.mjs): abre el producto en su web. Sin
+// stock, apagado. La fecha es la última vez que la web lo mostró.
+function onlineRowHtml(o, p) {
+  const chips = [
+    `<span class="chip">${esc(fmtFecha(isoDate(new Date(o.visto_at))))}</span>`,
+    o.disponible ? '' : '<span class="chip">Sin stock</span>',
+    o.disponible && o.precio_lista ? `<span class="chip">antes ${fmtMoney(o.precio_lista)}</span>` : '',
+    o.promos ? `<span class="chip chip--warn">${esc(o.promos)}</span>` : '',
+  ].join('');
+  const pr = { unidad: o.unidad, precio_unit: o.precio, precio_medida: o.precio_medida };
+  return `<a class="mrow txrow${o.disponible ? '' : ' mrow--old'}" href="${esc(o.url)}" target="_blank" rel="noopener">
+    ${lugarIc({ cadena: o.cadena })}
+    <span class="mrow__text"><span class="mrow__title">${esc(o.cadena)}</span>
+      <span class="row__meta"><span class="movchips">${chips}</span></span></span>
+    <span class="mrow__right"><span class="mrow__amt">${fmtMoney(o.precio)}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
+  </a>`;
+}
+
+// La ficha de un producto: ¿dónde está más barato? Con el historial entero del server y,
+// si tiene EAN, lo de las webs de los súper.
 async function openProducto(pid) {
-  let data = { producto: state.productos.get(pid), precios: preciosDe(pid) };
+  let data = { producto: state.productos.get(pid), precios: preciosDe(pid), online: [] };
   const paint = () => {
     const p = data.producto;
     if (!p) return `${modalHead('Producto')}<p class="note">No encontré el producto.</p>`;
@@ -681,6 +700,7 @@ async function openProducto(pid) {
           <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(precioDe(frescos[frescos.length - 1].precio) - precioDe(mejor.precio))} menos que en el más caro` : ''}</span>
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
+      ${data.online.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
       ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
@@ -692,7 +712,7 @@ async function openProducto(pid) {
   openModal({ render: paint });
   try {
     const d = await apiFetch(`/api/productos/${encodeURIComponent(pid)}`);
-    data = { producto: d.producto, precios: d.precios };
+    data = { producto: d.producto, precios: d.precios, online: d.online || [] };
     state.productos.set(pid, d.producto);
     if (modalState?.render === paint) repaintModal();
   } catch (e) {
@@ -2281,7 +2301,7 @@ function registerSW() {
 // pinta cada componente con su función de verdad (public/design-system/ds.js).
 if (window.__DS__) {
   window.comparame = {
-    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
+    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, onlineRowHtml, revRowHtml,
     controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml, fotosAddHtml,
     setRev: (r) => { rev = r; },
   };

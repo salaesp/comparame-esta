@@ -23,6 +23,7 @@
 /* Un precio de hace más de 30 días: no compara, se ve apagado. */
 .mrow--old .mrow__title, .mrow--old .mrow__amt, .amt-old { color: var(--muted); }
 .mrow--old .mrow__ic { opacity: .6; }
+a.mrow { text-decoration: none; color: inherit; }
 /* Un renglón que no cierra (importe > cantidad × precio): borde coral. */
 .mrow--warn { box-shadow: inset 3px 0 0 var(--neg); }
 .mrow:disabled { cursor: default; }

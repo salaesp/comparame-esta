@@ -1,0 +1,435 @@
+[
+ {
+  "productId": "676413",
+  "productName": "Pepitas artesanales dulce de leche",
+  "brand": "Genérico",
+  "link": "https://www.carrefour.com.ar/pepitas-artesanales-dulce-de-leche-50140/p",
+  "categories": [
+   "/Panadería/Elaboración Carrefour/Especialidades dulces/",
+   "/Panadería/Elaboración Carrefour/",
+   "/Panadería/"
+  ],
+  "Gramaje de unidad de consumo": [
+   "200.00"
+  ],
+  "Gramaje de unidad de medida": [
+   "GRS"
+  ],
+  "Precio x unidad": [
+   "($2,849.50 x 100 G.)"
+  ],
+  "items": [
+   {
+    "itemId": "50140",
+    "name": "Pepitas artesanales dulce de leche",
+    "ean": "7798133500605",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerName": "CARREFOUR",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 3999,
+       "ListPrice": 5699,
+       "PriceWithoutDiscount": 3999,
+       "AvailableQuantity": 100,
+       "IsAvailable": true,
+       "PromotionTeasers": [
+        {
+         "Name": "Tarjeta Carrefour 15%",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "15"
+           }
+          ]
+         }
+        },
+        {
+         "Name": "Tarjeta Carrefour 20% Off Martes",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,223364,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "20"
+           }
+          ]
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "6757",
+  "productName": "Licor Cusenier dulce de leche700 cc",
+  "brand": "Cusenier",
+  "link": "https://www.carrefour.com.ar/licor-cusenier-dulce-de-leche700-cc/p",
+  "categories": [
+   "/Bebidas/Bebidas blancas/Licores/",
+   "/Bebidas/Bebidas blancas/",
+   "/Bebidas/"
+  ],
+  "Gramaje de unidad de consumo": [
+   "700.00"
+  ],
+  "Gramaje de unidad de medida": [
+   "CM3"
+  ],
+  "Precio x unidad": [
+   "($12,012.86 x 1 L.)"
+  ],
+  "items": [
+   {
+    "itemId": "19919",
+    "name": "Licor Cusenier dulce de leche700 cc.",
+    "ean": "7792410008006",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerName": "CARREFOUR",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 6306.75,
+       "ListPrice": 8409,
+       "PriceWithoutDiscount": 8409,
+       "AvailableQuantity": 100,
+       "IsAvailable": true,
+       "PromotionTeasers": [
+        {
+         "Name": "Tarjeta Carrefour 15%",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "15"
+           }
+          ]
+         }
+        },
+        {
+         "Name": "Tarjeta Carrefour 20% Off Martes",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,223364,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "20"
+           }
+          ]
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "8404",
+  "productName": "Cebolla x kg.",
+  "brand": "Genérico",
+  "link": "https://www.carrefour.com.ar/cebolla-x-kg/p",
+  "categories": [
+   "/Frutas y verduras/Verduras/",
+   "/Frutas y verduras/"
+  ],
+  "Gramaje de unidad de consumo": [
+   "1000.00"
+  ],
+  "Gramaje de unidad de medida": [
+   "GRM"
+  ],
+  "Precio x unidad": [
+   "($2,499.00 x 1 K.)"
+  ],
+  "items": [
+   {
+    "itemId": "7968",
+    "name": "Cebolla x kg.",
+    "ean": "2320056000006",
+    "measurementUnit": "kg",
+    "unitMultiplier": 0.2,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerName": "CARREFOUR",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 2499,
+       "ListPrice": 2499,
+       "PriceWithoutDiscount": 2499,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": [
+        {
+         "Name": "Tarjeta Carrefour 15%",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "15"
+           }
+          ]
+         }
+        },
+        {
+         "Name": "Tarjeta Carrefour 20% Off Martes",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,223364,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "20"
+           }
+          ]
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "698808",
+  "productName": "Palta x uni",
+  "brand": "Genérico",
+  "link": "https://www.carrefour.com.ar/palta-x-uni-698808/p",
+  "categories": [
+   "/Frutas y verduras/Frutas/",
+   "/Frutas y verduras/"
+  ],
+  "Gramaje de unidad de consumo": [
+   "1.00"
+  ],
+  "Gramaje de unidad de medida": [
+   "UNI"
+  ],
+  "Precio x unidad": [
+   "($999.00 x 1 U.)"
+  ],
+  "items": [
+   {
+    "itemId": "98458",
+    "name": "Palta x uni",
+    "ean": "2646700000001",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerName": "CARREFOUR",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 999,
+       "ListPrice": 999,
+       "PriceWithoutDiscount": 999,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": [
+        {
+         "Name": "Tarjeta Carrefour 15%",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "15"
+           }
+          ]
+         }
+        },
+        {
+         "Name": "Tarjeta Carrefour 20% Off Martes",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,223364,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "20"
+           }
+          ]
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "720719",
+  "productName": "Leche La serenisima clásica 3% 1L",
+  "brand": "La Serenísima",
+  "link": "https://www.carrefour.com.ar/leche-la-serenisima-clasica-3-1l-720719/p",
+  "categories": [
+   "/Lácteos y productos frescos/Leches/Leches enteras/",
+   "/Lácteos y productos frescos/Leches/",
+   "/Lácteos y productos frescos/"
+  ],
+  "Gramaje de unidad de consumo": [
+   "1000.00"
+  ],
+  "Gramaje de unidad de medida": [
+   "CM3"
+  ],
+  "Precio x unidad": [
+   "($3,030.00 x 1 L.)"
+  ],
+  "items": [
+   {
+    "itemId": "144373",
+    "name": "Leche La serenisima clásica 3% 1L.",
+    "ean": "7790742363008",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerName": "CARREFOUR",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 3030,
+       "ListPrice": 3030,
+       "PriceWithoutDiscount": 3030,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": [
+        {
+         "Name": "Tarjeta Carrefour 15%",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "15"
+           }
+          ]
+         }
+        },
+        {
+         "Name": "Tarjeta Carrefour 20% Off Martes",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 0,
+          "Parameters": [
+           {
+            "Name": "RestrictionsBins",
+            "Value": "507858,858110,858111,585274,223364,538156,520225,539958,527061,898989"
+           }
+          ]
+         },
+         "Effects": {
+          "Parameters": [
+           {
+            "Name": "PercentualDiscount",
+            "Value": "20"
+           }
+          ]
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ }
+]
