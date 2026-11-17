@@ -35,7 +35,7 @@ async function buscar(q) {
 const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unidad, precio, precio_lista, precio_medida, promos, disponible, visto_at, cambio_at
     from online_productos
    where ean <> '' and ean = (select ean from productos where id = ?1)
-   order by coalesce(precio_medida, precio)`;
+   order by coalesce(precio_medida, precio), cadena`;
 
 async function uno(userId, id) {
   let [[p], precios, online, consultas] = await txBatch([

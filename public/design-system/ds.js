@@ -68,7 +68,7 @@ function pintar() {
     sec('En las webs de los súper', '<code>onlineRowHtml</code>: en la ficha de un producto con código de barras, el precio de la web de cada cadena (consultado en el momento, <code>lib/online.mjs</code>): el tachado, la promo para todos, si no hay stock (apagado) y cuándo lo mostró la web. Tocarlo abre el producto en su web.',
       `<div class="tcard ds__phone">${[
         { cadena: 'Carrefour', url: 'https://www.carrefour.com.ar/', unidad: 'u', precio: 3999, precio_lista: 5699, precio_medida: 7998, promos: '', disponible: 1, visto_at: new Date().toISOString() },
-        { cadena: 'Carrefour', url: 'https://www.carrefour.com.ar/', unidad: 'u', precio: 4450, precio_lista: null, precio_medida: 8900, promos: '2do al 70%', disponible: 0, visto_at: new Date(Date.now() - 3 * 864e5).toISOString() },
+        { cadena: 'Jumbo', url: 'https://www.jumbo.com.ar/', unidad: 'u', precio: 4450, precio_lista: null, precio_medida: 8900, promos: '2do al 70%', disponible: 0, visto_at: new Date(Date.now() - 3 * 864e5).toISOString() },
       ].map((o) => c.onlineRowHtml(o, st.productos.get('p1'))).join('')}</div>`),
     sec('Lo que cambió', '<code>cambioRowHtml</code>: el último precio en un lugar contra el anterior en el mismo lugar.',
       `<div class="tcard ds__phone">${c.cambioRowHtml({ ultimo: st.precios[0], antes: st.precios[2], pct: 0.111 })}</div>`),

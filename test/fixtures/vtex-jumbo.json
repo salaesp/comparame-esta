@@ -1,0 +1,148 @@
+[
+ {
+  "productId": "394454",
+  "productName": "Leche Uat Serenisima 3 - 1 Lt",
+  "brand": "LA SERENISIMA",
+  "link": "https://www.jumbo.com.ar/leche-uat-serenisima-3-1-lt/p",
+  "categories": [
+   "/Lácteos/Leches/Leches Larga Vida/",
+   "/Lácteos/Leches/",
+   "/Lácteos/"
+  ],
+  "Contenido Neto": [
+   "1 Lts"
+  ],
+  "items": [
+   {
+    "itemId": "392453",
+    "name": "Leche Uat Serenisima 3 - 1 Lt",
+    "nameComplete": "Leche Uat Serenisima 3 - 1 Lt",
+    "ean": "7790742363008",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 3031,
+       "ListPrice": 250496,
+       "PriceWithoutDiscount": 3031,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "12978",
+  "productName": "Banana Ecuador X Kg",
+  "brand": "SIN MARCA.",
+  "link": "https://www.jumbo.com.ar/banana-ecuador-x-kg-2/p",
+  "categories": [
+   "/Frutas y Verduras/Frutas/Frutas Sueltas/",
+   "/Frutas y Verduras/Frutas/",
+   "/Frutas y Verduras/"
+  ],
+  "items": [
+   {
+    "itemId": "10198",
+    "name": "Banana Ecuador X Kg",
+    "nameComplete": "Banana Ecuador X Kg",
+    "ean": "2599239000007",
+    "measurementUnit": "kg",
+    "unitMultiplier": 0.5,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 3499,
+       "ListPrice": 316652,
+       "PriceWithoutDiscount": 3499,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "3066320",
+  "productName": "Panqueques Banana X 4 Un Bygiro",
+  "brand": "BYGIRO",
+  "link": "https://www.jumbo.com.ar/panqueques-banana-x-4-un-bygiro/p",
+  "categories": [
+   "/Congelados/Comidas Congeladas/Comidas Congeladas/",
+   "/Congelados/Comidas Congeladas/",
+   "/Congelados/"
+  ],
+  "Contenido Neto": [
+   "268 Gr"
+  ],
+  "items": [
+   {
+    "itemId": "3066234",
+    "name": "Panqueques Banana X 4 Un Bygiro",
+    "nameComplete": "Panqueques Banana X 4 Un Bygiro",
+    "ean": "714604171881",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 7050,
+       "ListPrice": 582645,
+       "PriceWithoutDiscount": 7050,
+       "AvailableQuantity": 100,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "300228",
+  "productName": "Leche La Serenisima Liviana Bot 1l",
+  "brand": "LA SERENISIMA",
+  "link": "https://www.jumbo.com.ar/leche-la-serenisima-liviana-bot-1l/p",
+  "categories": [
+   "/Lácteos/Leches/Leches Larga Vida/",
+   "/Lácteos/Leches/",
+   "/Lácteos/"
+  ],
+  "items": [
+   {
+    "itemId": "299446",
+    "name": "Leche La Serenisima Liviana Bot 1l",
+    "nameComplete": "Leche La Serenisima Liviana Bot 1l",
+    "ean": "7790742335609",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 3400,
+       "ListPrice": 340000,
+       "PriceWithoutDiscount": 3400,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ }
+]

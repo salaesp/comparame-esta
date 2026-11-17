@@ -89,14 +89,16 @@ Toda la UI y los textos van en castellano rioplatense.
   `parseLaunchPrefill`); se elige cómo se pagó y se guarda allá. Las cuentas no se conectan. El
   teléfono recuerda cuáles mandaste (`localStorage['cmp:gastienzos']`). Tests en `test/gastienzos.test.mjs`.
 - **Los precios online** (`lib/online.mjs`): al abrir la ficha de un producto con EAN, `GET /api/productos/:id`
-  le pregunta en el momento a cada cadena de `CADENAS_ONLINE` (por ahora Carrefour) por su buscador público de
+  le pregunta en el momento, a la vez, a cada cadena de `CADENAS_ONLINE` (Carrefour, Jumbo, Disco y Vea) por su buscador público de
   **VTEX** (`/api/catalog_system/pub/products/search?fq=alternateIds_Ean:…`, el mismo que usa su web; sin key) y
   lo guarda: no vuelve a preguntar por ese EAN hasta `ONLINE_FRESCO_HORAS` (24) después (`online_consultas`,
   también si no lo tenía). Si la tienda no contesta (`ONLINE_TIMEOUT_MS`), no se anota y se pregunta la próxima.
-  `normalizarVtex`: el precio de la web con sus promos para todos, el tachado, la medida (el "Gramaje" de VTEX) y
-  las promos sin las de tarjeta o banco. La ficha los muestra aparte ("En las webs de los súper", `onlineRowHtml`,
-  con cuándo los mostró la web), sin mezclarlos con los de los tickets. Sumar Jumbo, Disco, Vea, Changomás o DIA
-  es sumar su renglón. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
+  `normalizarVtex`: el precio de la web con sus promos para todos, el tachado (de dónde sale lo dice `lista` de cada
+  cadena: en Jumbo, Disco y Vea —Cencosud— el ListPrice viene roto; y nunca más de `LISTA_MAX` veces el precio), la
+  medida (el "Gramaje" de Carrefour, el "Contenido Neto" de Cencosud o, si no, el nombre: `medidaDeTexto`) y las
+  promos sin las de tarjeta o banco. La ficha los muestra aparte ("En las webs de los súper", `onlineRowHtml`,
+  con cuándo los mostró la web), sin mezclarlos con los de los tickets, del más barato al más caro. Sumar Changomás o DIA es sumar su renglón
+  (y probar cómo vienen el tachado y la medida). Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 
