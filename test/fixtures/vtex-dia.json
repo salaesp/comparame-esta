@@ -1,0 +1,128 @@
+[
+ {
+  "productId": "298651",
+  "productName": "Nestle Bananita Dolca X 30 Gr.",
+  "brand": "DOLCA",
+  "link": "https://diaonline.supermercadosdia.com.ar/nestle-bananita-dolca-x-30-gr-298651/p",
+  "categories": [
+   "/Almacén/Golosinas y Alfajores/Chocolates/",
+   "/Almacén/Golosinas y Alfajores/",
+   "/Almacén/"
+  ],
+  "UnidaddeMedida": [
+   "10 Gr"
+  ],
+  "items": [
+   {
+    "itemId": "298651",
+    "name": "Nestle Bananita Dolca X 30 Gr.",
+    "nameComplete": "Nestle Bananita Dolca X 30 Gr.",
+    "ean": "77988263",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 1875,
+       "ListPrice": 1875,
+       "PriceWithoutDiscount": 1875,
+       "AvailableQuantity": 1065,
+       "IsAvailable": true,
+       "PromotionTeasers": [
+        {
+         "Name": "2x1",
+         "GeneralValues": {},
+         "Conditions": {
+          "MinimumQuantity": 2,
+          "Parameters": []
+         },
+         "Effects": {
+          "Parameters": []
+         }
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "272382",
+  "productName": "Leche Protein La Serenisima 1 Lt.",
+  "brand": "LA SERENISIMA",
+  "link": "https://diaonline.supermercadosdia.com.ar/leche-protein-la-serenisima-1-lt-272382/p",
+  "categories": [
+   "/Frescos/Leches/Leches descremadas/",
+   "/Frescos/Leches/",
+   "/Frescos/"
+  ],
+  "UnidaddeMedida": [
+   "1 LT"
+  ],
+  "items": [
+   {
+    "itemId": "272382",
+    "name": "Leche Protein La Serenisima 1 Lt.",
+    "nameComplete": "Leche Protein La Serenisima 1 Lt.",
+    "ean": "7790742358608",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 3245,
+       "ListPrice": 3245,
+       "PriceWithoutDiscount": 3245,
+       "AvailableQuantity": 692,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "90110",
+  "productName": "Banana x Kg.",
+  "brand": "DIA",
+  "link": "https://diaonline.supermercadosdia.com.ar/banana-x-kg-90110/p",
+  "categories": [
+   "/Frutas y Verduras/Frutas/Frutas de Estación y Cítricos/",
+   "/Frutas y Verduras/Frutas/",
+   "/Frutas y Verduras/"
+  ],
+  "UnidaddeMedida": [
+   "1 Kg"
+  ],
+  "items": [
+   {
+    "itemId": "90110",
+    "name": "Banana x Kg.",
+    "nameComplete": "Banana x Kg.",
+    "ean": "2490110000000",
+    "measurementUnit": "kg",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 2790,
+       "ListPrice": 2790,
+       "PriceWithoutDiscount": 2790,
+       "AvailableQuantity": 1924,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ }
+]

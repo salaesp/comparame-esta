@@ -1,0 +1,77 @@
+[
+ {
+  "productId": "142377",
+  "productName": "Dulce De Leche Gandara 400g",
+  "brand": "Gandara",
+  "link": "https://www.masonline.com.ar/dulce-de-leche-gandara-400-gr-2/p",
+  "categories": [
+   "/Frescos/Lácteos/Dulce De Leche/",
+   "/Frescos/Lácteos/",
+   "/Frescos/"
+  ],
+  "Gramaje de unidad de consumo": [
+   "1"
+  ],
+  "Gramaje de unidad de medida": [
+   "KG"
+  ],
+  "items": [
+   {
+    "itemId": "142377",
+    "name": "Dulce De Leche Gandara 400g",
+    "nameComplete": "Dulce De Leche Gandara 400g",
+    "ean": "7798335287007",
+    "measurementUnit": "un",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 2399,
+       "ListPrice": 3699,
+       "PriceWithoutDiscount": 2399,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "productId": "204538",
+  "productName": "Banana 1 Kg",
+  "brand": "Nuestra Verdulería",
+  "link": "https://www.masonline.com.ar/banana-300g/p",
+  "categories": [
+   "/Frutas y Verduras/Frutas Frescas/",
+   "/Frutas y Verduras/"
+  ],
+  "items": [
+   {
+    "itemId": "204538",
+    "name": "Banana 1 Kg",
+    "nameComplete": "Banana 1 Kg",
+    "ean": "2740110000009",
+    "measurementUnit": "kg",
+    "unitMultiplier": 1,
+    "sellers": [
+     {
+      "sellerId": "1",
+      "sellerDefault": true,
+      "commertialOffer": {
+       "Price": 2699,
+       "ListPrice": 2699,
+       "PriceWithoutDiscount": 2699,
+       "AvailableQuantity": 99999,
+       "IsAvailable": true,
+       "PromotionTeasers": []
+      }
+     }
+    ]
+   }
+  ]
+ }
+]

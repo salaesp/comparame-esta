@@ -1,5 +1,13 @@
 [
   {
+    "version": "next:minor",
+    "fecha": "",
+    "notas": [
+      "Los precios online ahora también son de ChangoMás y DIA.",
+      "La ficha de un producto se abre enseguida y muestra «Buscando en…» mientras consulta las webs de los súper."
+    ]
+  },
+  {
     "version": "0.9.0",
     "fecha": "2026-11-17",
     "notas": [

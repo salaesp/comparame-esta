@@ -1,8 +1,10 @@
 // Productos del catálogo (sólo con sesión). El catálogo es de todos; los precios, de
 // cada uno y sus amigos.
 //   GET   /api/productos?q=     -> buscar en el catálogo (para elegir uno en la revisión)
-//   GET   /api/productos/:id    -> el producto, TODOS sus precios que ves (el historial entero)
-//                                  y los de las tiendas online por su EAN (lib/online.mjs)
+//   GET   /api/productos/:id    -> el producto, TODOS sus precios que ves (el historial entero),
+//                                  lo guardado de las tiendas online por su EAN (lib/online.mjs) y
+//                                  `online_buscando`: las cadenas a las que hay que preguntarles
+//   GET   /api/productos/:id/online -> les pregunta a esas cadenas y devuelve lo online
 //   PATCH /api/productos/:id    -> corregir nombre, marca, medida o EAN
 import { json, error, readJson, segs } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
@@ -19,6 +21,7 @@ export default async function (req) {
   const [, , id, s3] = segs(req);
   if (!id && req.method === 'GET') return buscar(new URL(req.url).searchParams.get('q'));
   if (id && !s3 && req.method === 'GET') return uno(me.userId, id);
+  if (id && s3 === 'online' && req.method === 'GET') return online(id);
   if (id && !s3 && req.method === 'PATCH') return editar(me.userId, id, await readJson(req));
   return error('método no permitido', 405);
 }
@@ -38,7 +41,7 @@ const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unid
    order by coalesce(precio_medida, precio), cadena`;
 
 async function uno(userId, id) {
-  let [[p], precios, online, consultas] = await txBatch([
+  const [[p], precios, online, consultas] = await txBatch([
     [`select ${COLS} from productos where id = ?1`, [id]],
     [`select pr.id, pr.ticket_id, pr.user_id, pr.lugar_id, pr.fecha, pr.texto, pr.cantidad, pr.unidad, pr.precio_lista,
              pr.importe, pr.descuento, pr.pagado, pr.precio_unit, pr.precio_medida,
@@ -51,11 +54,19 @@ async function uno(userId, id) {
     [CONSULTAS_SQL.replace('?1', '(select ean from productos where id = ?1)'), [id]],
   ]);
   if (!p) return error('no encontrado', 404);
-  // Con EAN, a las cadenas que no se consultaron hace poco se les pregunta ahora (con timeout).
-  if (p.ean && cadenasPorConsultar(consultas).length && await actualizarOnline(p.ean, { consultas })) {
-    online = await sql(ONLINE_SQL, [id]);
-  }
-  return json({ ok: true, producto: p, precios, online });
+  // A las que no se les preguntó hace poco, la app les pregunta aparte (GET …/online) mientras
+  // muestra "Buscando en…": así la ficha no espera a las tiendas.
+  const online_buscando = p.ean ? cadenasPorConsultar(consultas).map((c) => c.nombre) : [];
+  return json({ ok: true, producto: p, precios, online, online_buscando });
+}
+
+// Les pregunta (a la vez, con timeout) a las cadenas que no se consultaron hace poco y
+// devuelve todo lo online del producto.
+async function online(id) {
+  const [p] = await sql('select ean from productos where id = ?1', [id]);
+  if (!p) return error('no encontrado', 404);
+  if (p.ean) await actualizarOnline(p.ean);
+  return json({ ok: true, online: await sql(ONLINE_SQL, [id]) });
 }
 
 // Lo corrige quien lo creó o quien tiene algún precio cargado de él (el catálogo es de
@@ -99,4 +110,4 @@ async function editar(userId, id, b) {
   return json({ ok: true, producto: row });
 }
 
-export const config = { path: ['/api/productos', '/api/productos/:id'] };
+export const config = { path: ['/api/productos', '/api/productos/:id', '/api/productos/:id/online'] };

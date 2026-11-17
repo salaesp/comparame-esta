@@ -24,6 +24,8 @@
 .mrow--old .mrow__title, .mrow--old .mrow__amt, .amt-old { color: var(--muted); }
 .mrow--old .mrow__ic { opacity: .6; }
 a.mrow { text-decoration: none; color: inherit; }
+.onlinebusca { color: var(--muted); gap: var(--sp-3); }
+.onlinebusca .mrow__title { color: var(--muted); font-weight: 500; }
 /* Un renglón que no cierra (importe > cantidad × precio): borde coral. */
 .mrow--warn { box-shadow: inset 3px 0 0 var(--neg); }
 .mrow:disabled { cursor: default; }

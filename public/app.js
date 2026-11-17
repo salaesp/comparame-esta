@@ -666,10 +666,17 @@ function onlineRowHtml(o, p) {
   </a>`;
 }
 
+// Mientras se les pregunta a las webs: "Buscando en Jumbo, Vea y DIA…".
+const enumerar = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}` : xs[0] || '');
+function onlineBuscandoHtml(cadenas) {
+  return `<div class="mrow onlinebusca" role="status"><span class="mvf__spin" aria-hidden="true"></span>
+    <span class="mrow__text"><span class="mrow__title">Buscando en ${esc(enumerar(cadenas))}…</span></span></div>`;
+}
+
 // La ficha de un producto: ¿dónde está más barato? Con el historial entero del server y,
-// si tiene EAN, lo de las webs de los súper.
+// si tiene EAN, lo de las webs de los súper (lo guardado enseguida; lo que falta, después).
 async function openProducto(pid) {
-  let data = { producto: state.productos.get(pid), precios: preciosDe(pid), online: [] };
+  let data = { producto: state.productos.get(pid), precios: preciosDe(pid), online: [], buscando: [] };
   const paint = () => {
     const p = data.producto;
     if (!p) return `${modalHead('Producto')}<p class="note">No encontré el producto.</p>`;
@@ -700,7 +707,7 @@ async function openProducto(pid) {
           <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(precioDe(frescos[frescos.length - 1].precio) - precioDe(mejor.precio))} menos que en el más caro` : ''}</span>
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
-      ${data.online.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}</div>` : ''}
+      ${data.online.length || data.buscando.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
       ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
@@ -712,12 +719,20 @@ async function openProducto(pid) {
   openModal({ render: paint });
   try {
     const d = await apiFetch(`/api/productos/${encodeURIComponent(pid)}`);
-    data = { producto: d.producto, precios: d.precios, online: d.online || [] };
+    data = { producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [] };
     state.productos.set(pid, d.producto);
     if (modalState?.render === paint) repaintModal();
   } catch (e) {
     if (e.status !== 401 && !data.producto) toast(e.message, { icon: 'error' });
+    return;
   }
+  if (!data.buscando.length) return;
+  try {
+    const o = await apiFetch(`/api/productos/${encodeURIComponent(pid)}/online`);
+    data = { ...data, online: o.online || [] };
+  } catch { /* sin las webs: queda lo guardado */ }
+  data = { ...data, buscando: [] };
+  if (modalState?.render === paint) repaintModal();
 }
 
 const UNIDADES_MEDIDA = [['g', 'g'], ['kg', 'kg'], ['ml', 'ml'], ['l', 'L'], ['u', 'unidades']];
@@ -2301,7 +2316,7 @@ function registerSW() {
 // pinta cada componente con su función de verdad (public/design-system/ds.js).
 if (window.__DS__) {
   window.comparame = {
-    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, onlineRowHtml, revRowHtml,
+    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, onlineRowHtml, onlineBuscandoHtml, revRowHtml,
     controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml, fotosAddHtml,
     setRev: (r) => { rev = r; },
   };

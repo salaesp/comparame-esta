@@ -14,6 +14,17 @@ const copia = (x) => JSON.parse(JSON.stringify(x));
 const porNombre = (n, de = VTEX) => copia(de.find((p) => p.productName.startsWith(n)));
 const cadena = (n) => CADENAS_ONLINE.find((c) => c.nombre === n);
 const PEPITAS = '7798133500605';
+const TODAS = ['Carrefour', 'Jumbo', 'Disco', 'Vea', 'ChangoMás', 'DIA'];
+const HOSTS = ['diaonline.supermercadosdia.com.ar', 'www.carrefour.com.ar', 'www.disco.com.ar', 'www.jumbo.com.ar', 'www.masonline.com.ar', 'www.vea.com.ar'];
+// Abrir la ficha como la app: lo guardado enseguida y, si hay cadenas por consultar, …/online.
+async function abrir(worker, u, id) {
+  const ficha = await pedir(worker, u, 'GET', `/api/productos/${id}`);
+  assert.equal(ficha.status, 200);
+  if (!ficha.data.online_buscando.length) return { buscando: [], online: ficha.data.online, ficha };
+  const o = await pedir(worker, u, 'GET', `/api/productos/${id}/online`);
+  assert.equal(o.status, 200);
+  return { buscando: ficha.data.online_buscando, online: o.data.online, ficha };
+}
 const LECHE = '7790742363008';
 // Unas tiendas falsas: cada host contesta lo suyo ([] si no tiene nada) y se anotan los pedidos.
 function tiendas(porHost) {
@@ -74,6 +85,18 @@ test('Jumbo, Disco y Vea: el ListPrice roto no es un tachado y la medida sale de
   // Aunque se lea el ListPrice, uno de más de 5 veces el precio no vale.
   assert.equal(normalizarVtex(porNombre('Leche Uat Serenisima', JUMBO))[0].precio_lista, null);
 
+  // ChangoMás: el "Gramaje" es la unidad del precio por medida (1 KG en un dulce de leche de
+  // 400 g): la medida sale del nombre. Su ListPrice sí es el tachado.
+  const CHANGO = fixture('vtex-changomas.json');
+  const [dulce] = normalizarVtex(porNombre('Dulce De Leche Gandara', CHANGO), cadena('ChangoMás'));
+  assert.deepEqual([dulce.medida, dulce.medida_unidad, dulce.precio, dulce.precio_lista], [400, 'g', 2399, 3699]);
+  assert.equal(normalizarVtex(porNombre('Banana 1 Kg', CHANGO), cadena('ChangoMás'))[0].unidad, 'kg');
+  // DIA: el 2x1 es una promo para todos.
+  const DIA = fixture('vtex-dia.json');
+  const [bananita] = normalizarVtex(porNombre('Nestle Bananita', DIA), cadena('DIA'));
+  assert.deepEqual([bananita.promos, bananita.medida, bananita.ean], ['2x1', 30, '77988263']);
+  assert.equal(normalizarVtex(porNombre('Leche Protein', DIA), cadena('DIA'))[0].medida, 1000);
+
   assert.deepEqual(medidaDeTexto('Leche Uat Serenisima 3 - 1 Lt'), { medida: 1000, unidad: 'ml' });
   assert.deepEqual(medidaDeTexto('Yerba Playadito 1,5 Kg'), { medida: 1500, unidad: 'g' });
   assert.deepEqual(medidaDeTexto('Barra Proteica Afa 43gr'), { medida: 43, unidad: 'g' });
@@ -81,7 +104,7 @@ test('Jumbo, Disco y Vea: el ListPrice roto no es un tachado y la medida sale de
   assert.equal(medidaDeTexto('Leche Entera 3%'), null);
 });
 
-test('la ficha de un producto con EAN trae lo de Carrefour, lo guarda un día y sigue el historial', async () => {
+test('la ficha se abre sin esperar a las webs; …/online trae lo de Carrefour, lo guarda un día y sigue el historial', async () => {
   const { sql } = await baseNueva();
   const worker = (await import('../worker/index.js')).default;
   const ana = await usuario(sql, 'ana@x.com');
@@ -95,24 +118,32 @@ test('la ficha de un producto con EAN trae lo de Carrefour, lo guarda un día y 
     urls.push(String(url));
     return new Response(new URL(url).hostname === 'www.carrefour.com.ar' ? JSON.stringify(respuesta) : '[]');
   });
-  const pedidos = { get length() { return urls.filter((u) => u.includes('carrefour')).length; } };
+  const aCarrefour = () => urls.filter((u) => u.includes('carrefour')).length;
 
-  let r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  assert.equal(r.status, 200);
-  assert.deepEqual(urls.map((u) => new URL(u).hostname).sort(), ['www.carrefour.com.ar', 'www.disco.com.ar', 'www.jumbo.com.ar', 'www.vea.com.ar']);
+  // La ficha sola no sale a las webs: dice a cuáles hay que preguntarles.
+  const ficha = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
+  assert.deepEqual(ficha.data.online, []);
+  assert.deepEqual(ficha.data.online_buscando, TODAS);
+  assert.equal(urls.length, 0);
+
+  let r = await abrir(worker, ana, p.id);
+  assert.deepEqual(urls.map((u) => new URL(u).hostname).sort(), HOSTS);
   assert.ok(urls.includes('https://www.carrefour.com.ar/api/catalog_system/pub/products/search?fq=alternateIds_Ean:7798133500605'));
-  assert.equal(r.data.online.length, 1);
-  assert.equal(r.data.online[0].cadena, 'Carrefour');
-  assert.equal(r.data.online[0].precio, 3999);
-  assert.equal(r.data.online[0].precio_lista, 5699);
+  assert.equal(r.online.length, 1);
+  assert.equal(r.online[0].cadena, 'Carrefour');
+  assert.equal(r.online[0].precio, 3999);
+  assert.equal(r.online[0].precio_lista, 5699);
 
-  // Otra vez enseguida: no se le vuelve a preguntar. Sin EAN, nunca.
-  r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  assert.equal(pedidos.length, 1);
-  assert.equal(r.data.online[0].precio, 3999);
-  r = await pedir(worker, ana, 'GET', `/api/productos/${sinEan.id}`);
-  assert.equal(pedidos.length, 1);
-  assert.deepEqual(r.data.online, []);
+  // Otra vez enseguida: ya viene en la ficha y no se busca. Sin EAN, nunca.
+  r = await abrir(worker, ana, p.id);
+  assert.deepEqual(r.buscando, []);
+  assert.equal(aCarrefour(), 1);
+  assert.equal(r.online[0].precio, 3999);
+  r = await abrir(worker, ana, sinEan.id);
+  assert.deepEqual(r.buscando, []);
+  assert.deepEqual(r.online, []);
+  assert.equal((await pedir(worker, ana, 'GET', `/api/productos/${sinEan.id}/online`)).data.online.length, 0);
+  assert.equal(aCarrefour(), 1);
 
   // Pasado un día, sí; con otro precio: se actualiza y queda en el historial.
   const viejo = new Date(Date.now() - (ONLINE_FRESCO_HORAS + 1) * 3600_000).toISOString();
@@ -120,17 +151,18 @@ test('la ficha de un producto con EAN trae lo de Carrefour, lo guarda un día y 
   await sql('update online_productos set cambio_at = ?1, visto_at = ?1', [viejo]);
   respuesta = [porNombre('Pepitas')];
   respuesta[0].items[0].sellers[0].commertialOffer.Price = 4299;
-  r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  assert.equal(pedidos.length, 2);
-  assert.equal(r.data.online[0].precio, 4299);
-  assert.ok(r.data.online[0].cambio_at > viejo);
+  r = await abrir(worker, ana, p.id);
+  assert.equal(r.ficha.data.online[0].precio, 3999); // lo guardado, mientras busca
+  assert.equal(aCarrefour(), 2);
+  assert.equal(r.online[0].precio, 4299);
+  assert.ok(r.online[0].cambio_at > viejo);
   const hist = await sql('select precio from online_historial order by desde');
   assert.deepEqual(hist.map((h) => h.precio), [3999, 4299]);
 
   // El mismo precio otra vez: visto_at avanza, cambio_at y el historial no.
   await sql('update online_consultas set consultado_at = ?1', [viejo]);
   const [antes] = await sql('select cambio_at from online_productos');
-  r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
+  await abrir(worker, ana, p.id);
   const [despues] = await sql('select cambio_at, visto_at from online_productos');
   assert.equal(despues.cambio_at, antes.cambio_at);
   assert.ok(despues.visto_at > antes.cambio_at);
@@ -145,20 +177,21 @@ test('si la tienda no lo tiene, se anota y no se pregunta de nuevo; si no contes
 
   // Jumbo no contesta; las otras no lo tienen.
   let pedidos = tiendas({ 'www.jumbo.com.ar': new Error('timeout') });
-  let r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  assert.equal(r.status, 200);
-  assert.deepEqual(r.data.online, []);
-  assert.equal(pedidos.length, 4);
+  let r = await abrir(worker, ana, p.id);
+  assert.deepEqual(r.online, []);
+  assert.equal(pedidos.length, 6);
   // La próxima, sólo a Jumbo.
-  r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  assert.deepEqual(pedidos.slice(4), ['www.jumbo.com.ar']);
+  r = await abrir(worker, ana, p.id);
+  assert.deepEqual(r.buscando, ['Jumbo']);
+  assert.deepEqual(pedidos.slice(6), ['www.jumbo.com.ar']);
 
   pedidos = tiendas({});
-  await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
+  await abrir(worker, ana, p.id);
+  r = await abrir(worker, ana, p.id);
+  assert.deepEqual(r.buscando, []);
   assert.deepEqual(pedidos, ['www.jumbo.com.ar']);
   const cs = (await sql('select cadena, encontrados from online_consultas order by cadena')).map((x) => ({ ...x }));
-  assert.deepEqual(cs, ['Carrefour', 'Disco', 'Jumbo', 'Vea'].map((c) => ({ cadena: c, encontrados: 0 })));
+  assert.deepEqual(cs, [...TODAS].sort().map((c) => ({ cadena: c, encontrados: 0 })));
 });
 
 test('la misma leche en varias cadenas: una por cadena, de la más barata a la más cara', async () => {
@@ -171,9 +204,9 @@ test('la misma leche en varias cadenas: una por cadena, de la más barata a la m
   enVea.items[0].sellers[0].commertialOffer.Price = 2990;
   enVea.link = 'https://www.vea.com.ar/leche-uat-serenisima-3-1-lt/p';
   tiendas({ 'www.jumbo.com.ar': [leche], 'www.disco.com.ar': [leche], 'www.vea.com.ar': [enVea] });
-  const r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
-  assert.deepEqual(r.data.online.map((o) => [o.cadena, o.precio]), [['Vea', 2990], ['Disco', 3031], ['Jumbo', 3031]]);
-  assert.equal(r.data.online[0].url, 'https://www.vea.com.ar/leche-uat-serenisima-3-1-lt/p');
+  const r = await abrir(worker, ana, p.id);
+  assert.deepEqual(r.online.map((o) => [o.cadena, o.precio]), [['Vea', 2990], ['Disco', 3031], ['Jumbo', 3031]]);
+  assert.equal(r.online[0].url, 'https://www.vea.com.ar/leche-uat-serenisima-3-1-lt/p');
   // El mismo sku en dos cadenas son dos productos distintos.
   assert.equal((await sql('select count(*) as n from online_productos'))[0].n, 3);
 });
