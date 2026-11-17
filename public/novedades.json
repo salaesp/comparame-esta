@@ -1,5 +1,13 @@
 [
   {
+    "version": "next:minor",
+    "fecha": "",
+    "notas": [
+      "Los tickets ya no se comparten: cada uno ve sólo los suyos. Con tus amigos se siguen viendo los precios de los productos, sin el ticket ni lo que pagó.",
+      "Lugares muestra todos los lugares con precios (tuyos o de tus amigos) y cuántos productos tienen."
+    ]
+  },
+  {
     "version": "0.11.2",
     "fecha": "2026-11-17",
     "notas": [

@@ -82,17 +82,27 @@ test('leer un ticket de tres fotos: lo cruza con el catálogo y controla el tota
   assert.equal((await db.sql('select count(*) as n from productos'))[0].n, 17);
 });
 
-test('el amigo ve el ticket; quien no es amigo, no', async () => {
+test('el amigo ve los precios pero no el ticket; quien no es amigo, nada', async () => {
   const b = await pedir(worker, beto, 'GET', '/api/boot');
-  assert.equal(b.data.tickets.length, 1);
+  assert.equal(b.data.tickets.length, 0);
   assert.equal(b.data.precios.length, 19);
+  // Del precio de un amigo, lo que hace falta para comparar; nada del ticket.
+  assert.ok(b.data.precios.every((p) => p.ticket_id == null && p.pagado == null && p.importe == null && p.cantidad == null && p.orden == null));
+  assert.ok(b.data.precios.every((p) => p.precio_unit != null || p.precio_medida != null));
   assert.equal(b.data.lugares[0].cadena, 'Carrefour');
   assert.deepEqual(b.data.amigos.map((a) => a.name), ['Ana']);
   const c = await pedir(worker, caro, 'GET', '/api/boot');
   assert.equal(c.data.tickets.length, 0);
   assert.equal(c.data.precios.length, 0);
-  const id = b.data.tickets[0].id;
-  assert.equal((await pedir(worker, beto, 'GET', `/api/tickets/${id}`)).data.ticket.renglones.length, 19);
+  const a = await pedir(worker, ana, 'GET', '/api/boot');
+  assert.equal(a.data.tickets.length, 1);
+  assert.ok(a.data.precios.every((p) => p.ticket_id && p.pagado != null));
+  const id = a.data.tickets[0].id;
+  assert.equal((await pedir(worker, ana, 'GET', `/api/tickets/${id}`)).data.ticket.renglones.length, 19);
+  assert.equal((await pedir(worker, beto, 'GET', `/api/tickets/${id}`)).status, 404);
+  const pid = b.data.precios[0].producto_id;
+  const f = await pedir(worker, beto, 'GET', `/api/productos/${pid}`);
+  assert.ok(f.data.precios.length > 0 && f.data.precios.every((p) => p.ticket_id == null && p.pagado == null));
   assert.equal((await pedir(worker, caro, 'GET', `/api/tickets/${id}`)).status, 404);
   assert.equal((await pedir(worker, beto, 'DELETE', `/api/tickets/${id}`)).status, 404); // no es suyo
 });

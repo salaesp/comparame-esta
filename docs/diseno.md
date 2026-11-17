@@ -13,8 +13,9 @@ saben dónde sale más barata cada cosa.
 - Fotos leídas por la IA de Anthropic (Claude), con la API key del Worker.
 - Un ticket puede necesitar varias fotos, y una foto puede repetir los últimos renglones de
   la anterior.
-- Amigos por link de invitación. Un amigo ve **todos** tus precios: si es tu amigo es porque
-  querés compartirlos.
+- Amigos por link de invitación. Un amigo ve **todos** tus precios de productos: si es tu amigo
+  es porque querés compartirlos. Los tickets no se comparten (ni con amigos): el ticket, lo
+  pagado y qué más se compró son sólo de quien lo cargó (decidido en noviembre de 2026).
 - El mismo design system de Gastienzos ("Suave").
 
 Se toma de referencia el módulo Precios que tuvo gastos-app y se sacó (commit `478996f` de
@@ -189,8 +190,8 @@ repo quedó sólo la verdad, no las imágenes).
 
 Mobile primero, con la barra inferior de gastos.
 
-1. **Inicio.** El buscador de productos arriba, los últimos tickets (tuyos y de tus amigos:
-   "Juli · Coto Cabildo · ayer · 23 productos") y "Lo que cambió": productos que subieron o
+1. **Inicio.** El buscador de productos arriba, los últimos tickets (sólo los tuyos: los de
+   tus amigos no se ven, sólo sus precios) y "Lo que cambió": productos que subieron o
    bajaron desde la última vez. El "+" abre la cámara.
 2. **Un producto.** La pregunta es "¿dónde está más barato?". El **último precio en cada
    lugar**, ordenado del más barato al más caro, con fecha y quién lo cargó ("vos", "Juli"); el

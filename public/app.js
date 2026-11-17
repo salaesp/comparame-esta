@@ -1,5 +1,5 @@
 // Comparame esta: la app (sin framework ni build). Arranca con boot(): /api/boot trae
-// quién sos, tus amigos y lo que ven entre todos de los últimos meses; las pantallas se
+// quién sos, tus amigos, tus tickets y los precios tuyos y de ellos de los últimos meses; las pantallas se
 // arman en memoria con eso. El sistema visual es el "Suave" de Gastienzos
 // (styles.css = su capa genérica; app.css = los componentes propios de esta app).
 //
@@ -177,11 +177,12 @@ function setCiudad(c) {
   state.ciudad = c;
   try { if (c) localStorage.setItem(CIUDAD_KEY, c); else localStorage.removeItem(CIUDAD_KEY); } catch { /* sin storage */ }
 }
-// Las ciudades de los lugares que se ven, de la que más tickets tiene a la que menos.
+// Las ciudades de los lugares que se ven, de la que más precios tiene a la que menos (los
+// tickets son sólo los tuyos; los precios, también los de tus amigos).
 function ciudades() {
   const n = new Map();
-  for (const t of state.tickets) {
-    const c = lugarDe(t.lugar_id)?.ciudad;
+  for (const pr of state.precios) {
+    const c = lugarDe(pr.lugar_id)?.ciudad;
     if (c) n.set(c, (n.get(c) || 0) + 1);
   }
   return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
@@ -792,6 +793,8 @@ try { localStorage.removeItem('cmp:noEsNinguno'); } catch { /* sin storage */ }
 // Lo que la ficha abierta sabe hacer con sus botones (los toques van por el handler global).
 let fichaProducto = null;
 
+// Tocar un precio abre su ticket si es tuyo; uno de un amigo, el lugar (su ticket no se ve).
+const precioAbre = (pr) => (pr.ticket_id ? `data-ticket="${esc(pr.ticket_id)}"` : pr.lugar_id ? `data-lugar="${esc(pr.lugar_id)}"` : 'disabled');
 // La ficha de un producto: ¿dónde está más barato? Con el historial entero del server y,
 // si tiene EAN, lo de las webs de los súper (lo guardado enseguida; lo que falta, después).
 async function openProducto(pid) {
@@ -811,7 +814,7 @@ async function openProducto(pid) {
       const pr = x.precio;
       const l = lugarDe(pr.lugar_id) || { cadena: pr.cadena, sucursal: pr.sucursal, direccion: pr.direccion, ciudad: pr.ciudad };
       const donde = lugarDonde(l);
-      return `<button type="button" class="mrow txrow${x.fresco && !x.otra ? '' : ' mrow--old'}" data-ticket="${esc(pr.ticket_id)}">
+      return `<button type="button" class="mrow txrow${x.fresco && !x.otra ? '' : ' mrow--old'}" ${precioAbre(pr)}>
         ${lugarIc(l)}
         <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
           <span class="row__meta"><span class="movchips">${x.fresco && !x.otra && i === 0 && frescos.length > 1 ? '<span class="chip chip--best">Más barato</span>' : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${whoChip(pr.user_id)}<span class="chip">${esc(fmtFecha(pr.fecha))}</span></span></span></span>
@@ -831,7 +834,7 @@ async function openProducto(pid) {
         : !p.ean && parecidosHtml(data.parecidos) ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${parecidosHtml(data.parecidos)}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
-      ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
+      ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" ${precioAbre(pr)}><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
       <div class="prodfoot">
         ${p.ean ? `<span class="chip">Código ${esc(p.ean)}</span>` : ''}
         <button type="button" class="set__btn" data-prod-edit="${esc(p.id)}">${ic('edit', 18)} Corregir el producto</button>
@@ -986,14 +989,18 @@ function openProductoEdit(pid) {
 }
 
 // ---------- Lugares ----------
+// Cuántos productos distintos tienen precio en un lugar (tuyos y de tus amigos).
+const productosEn = (lid) => new Set(state.precios.filter((pr) => pr.lugar_id === lid).map((pr) => pr.producto_id)).size;
+const productosLabel = (n) => `${n} ${n === 1 ? 'producto' : 'productos'}`;
+// Los lugares con algún precio (tuyo o de un amigo), del último precio al más viejo.
 function lugaresHtml() {
   const by = new Map();
   const ciudad = ciudadActiva();
-  for (const t of state.tickets) {
-    if (!t.lugar_id || !enCiudad(t.lugar_id, ciudad)) continue;
-    const cur = by.get(t.lugar_id) || { n: 0, ultimo: '' };
-    cur.n++; if (t.fecha > cur.ultimo) cur.ultimo = t.fecha;
-    by.set(t.lugar_id, cur);
+  for (const pr of state.precios) {
+    if (!pr.lugar_id || !enCiudad(pr.lugar_id, ciudad)) continue;
+    const cur = by.get(pr.lugar_id) || { prods: new Set(), ultimo: '' };
+    cur.prods.add(pr.producto_id); if (pr.fecha > cur.ultimo) cur.ultimo = pr.fecha;
+    by.set(pr.lugar_id, cur);
   }
   // En cuántos productos cada lugar es el más barato (entre los precios frescos).
   const gana = new Map();
@@ -1002,7 +1009,7 @@ function lugaresHtml() {
     if (fr.length > 1) gana.set(fr[0].lugar_id, (gana.get(fr[0].lugar_id) || 0) + 1);
   }
   const rows = [...by.entries()].sort((a, b) => (b[1].ultimo > a[1].ultimo ? 1 : -1));
-  if (!rows.length && !state.tickets.length) return `<div class="tcard">${emptyState('Todavía no hay lugares', 'Cada ticket suma el lugar donde compraste.', [{ label: 'Sacar una foto', attr: 'data-nuevo' }])}</div>`;
+  if (!rows.length && !state.precios.length) return `<div class="tcard">${emptyState('Todavía no hay lugares', 'Cada ticket suma el lugar donde compraste.', [{ label: 'Sacar una foto', attr: 'data-nuevo' }])}</div>`;
   return `${ciudadesHtml()}<div class="tcard">${rows.map(([id, s]) => {
     const l = lugarDe(id);
     const donde = lugarDonde(l);
@@ -1010,7 +1017,7 @@ function lugaresHtml() {
       ${lugarIc(l)}
       <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
         <span class="row__meta"><span class="movchips">${gana.get(id) ? `<span class="chip chip--best">${gana.get(id)} más ${gana.get(id) === 1 ? 'barato' : 'baratos'}</span>` : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}<span class="chip">${esc(fmtFecha(s.ultimo))}</span></span></span></span>
-      <span class="mrow__right"><span class="mrow__amt">${s.n} ${s.n === 1 ? 'ticket' : 'tickets'}</span></span>
+      <span class="mrow__right"><span class="mrow__amt">${productosLabel(s.prods.size)}</span></span>
     </button>`;
   }).join('') || `<p class="note">No hay lugares en ${esc(ciudad)}.</p>`}</div>`;
 }
@@ -1030,7 +1037,7 @@ function openLugar(id) {
       ${l && !l.direccion ? `<div class="control">${ic('pin', 20)}<span><b>Todavía no tiene dirección.</b> ${l.punto_venta ? `Lo reconozco por su punto de venta (${esc(pvLabel(l.punto_venta))}).` : 'Sin ella, todas las sucursales de la cadena son una.'}
         ${lugarEditable(l) ? `<button type="button" class="set__btn control__btn" data-lugar-edit="${esc(id)}">${ic('search', 18)} Buscar el local</button>` : ''}</span></div>` : ''}
       ${masBarato.length ? `<span class="setsub">Acá está más barato</span><div class="gcard">${masBarato.map(productoRowHtml).join('')}</div>` : ''}
-      <span class="setsub">Tickets</span><div class="gcard">${tks.map(ticketRowHtml).join('')}</div>
+      ${tks.length ? `<span class="setsub">Tus tickets</span><div class="gcard">${tks.map(ticketRowHtml).join('')}</div>` : ''}
       ${aca.length ? `<span class="setsub">Productos con precio acá (${aca.length})</span><div class="gcard">${aca.map(productoRowHtml).join('')}</div>` : ''}
       ${lugarEditable(l) ? `<div class="prodfoot prodfoot--end">${state.lugares.size > 1 ? `<button type="button" class="set__btn" data-lugar-juntar="${esc(id)}">${ic('merge', 18)} Es el mismo que otro</button>` : ''}${l.direccion ? `<button type="button" class="set__btn" data-lugar-edit="${esc(id)}">${ic('edit', 18)} Corregir el lugar</button>` : ''}</div>` : ''}`;
     },
@@ -1045,12 +1052,12 @@ function lugarJuntarHtml(id) {
     .sort((a, b) => lugarNombre(a).localeCompare(lugarNombre(b), 'es') || lugarDonde(a).localeCompare(lugarDonde(b), 'es'));
   const fila = (x) => {
     const donde = lugarDonde(x);
-    const n = state.tickets.filter((t) => t.lugar_id === x.id).length;
+    const n = productosEn(x.id);
     return `<button type="button" class="mrow txrow" data-juntar-con="${esc(x.id)}">
       ${lugarIc(x)}
       <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(x))}</span>
         <span class="row__meta"><span class="movchips">${donde ? `<span class="chip">${esc(donde)}</span>` : '<span class="chip">Sin dirección</span>'}</span></span></span>
-      <span class="mrow__right"><span class="mrow__amt">${n} ${n === 1 ? 'ticket' : 'tickets'}</span></span>
+      <span class="mrow__right"><span class="mrow__amt">${productosLabel(n)}</span></span>
     </button>`;
   };
   const misma = otros.filter((x) => normQ(x.cadena || '') === ck);
@@ -1694,7 +1701,7 @@ async function openTicket(id) {
   }
 }
 async function deleteTicket(id) {
-  const ok = await askConfirm('¿Borrar este ticket?', { text: 'Se borran sus precios para vos y tus amigos. Los productos quedan.', ok: 'Borrar', danger: true });
+  const ok = await askConfirm('¿Borrar este ticket?', { text: 'Se borran sus precios (también para tus amigos). Los productos quedan.', ok: 'Borrar', danger: true });
   if (!ok) return;
   try {
     await apiFetch(`/api/tickets/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -2267,7 +2274,7 @@ async function invitar() {
     const texto = `${state.user.name?.split(' ')[0] || 'Te'} te invita a compartir precios en Comparame esta`;
     const sh = openSheet({
       title: 'Invitar a un amigo',
-      body: `<p class="modal__lead">Mandale este link. Cuando lo abra y entre, van a ver los precios del otro. Sirve una vez y vence en 7 días.</p>
+      body: `<p class="modal__lead">Mandale este link. Cuando lo abra y entre, van a ver los precios de los productos del otro (los tickets, no: son de cada uno). Sirve una vez y vence en 7 días.</p>
         <div class="setgroup setgroup--row"><code class="code">${esc(url)}</code><button type="button" class="copybtn" id="inv-copy">Copiar</button></div>`,
       foot: navigator.share ? '<button type="button" class="mvf__submit" id="inv-share">Mandarle el link</button>' : '',
       onMount: (el) => {
@@ -2343,10 +2350,10 @@ function ajustesHtml() {
 function openAmigo(id) {
   const a = state.users.get(id);
   if (!a) return;
-  const n = state.tickets.filter((t) => t.user_id === id).length;
+  const n = new Set(state.precios.filter((pr) => pr.user_id === id).map((pr) => pr.producto_id)).size;
   openSheet({
     title: a.name || a.email,
-    body: `<p class="modal__lead">${esc(a.email)} · ${n ? `${n} ${n === 1 ? 'ticket' : 'tickets'} en los últimos meses` : 'todavía no cargó tickets'}.</p>
+    body: `<p class="modal__lead">${esc(a.email)} · ${n ? `${productosLabel(n)} con precio en los últimos meses` : 'todavía no cargó precios'}.</p>
       <div class="dangerfoot"><button type="button" class="dangerfoot__btn" data-quitar-amigo="${esc(id)}">Quitar de mis amigos</button></div>`,
   });
 }
