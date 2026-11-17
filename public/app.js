@@ -805,7 +805,7 @@ async function openProducto(pid) {
         toast('Ahora se compara por su código en todas las webs', { lead: 'Listo', icon: 'ok' });
         cargar();
       } catch (e) {
-        if (e.status === 404) toast('Sólo lo puede cambiar quien lo cargó.', { icon: 'error' });
+        if (e.status === 404) toast('No pude ponerle el código: puede que ya tenga uno. Abrilo de nuevo.', { icon: 'error' });
         else if (e.status !== 401) toast(e.message, { icon: 'error' });
       }
     },

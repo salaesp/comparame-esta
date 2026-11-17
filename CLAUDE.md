@@ -114,8 +114,12 @@ Toda la UI y los textos van en castellano rioplatense.
   le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código. **La foto** de un
   producto es la de las webs con su EAN (`online_productos.imagen`, `FOTO_SQL` en `/api/boot` y en la ficha; primero
   la de una con stock): en la lista (`prodIcHtml`) y en la ficha, al lado del precio. Para que la tengan sin abrir
-  la ficha, `/api/boot` busca en segundo plano los productos con código y sin foto (`actualizarOnline` con varios
-  EAN: hasta `ONLINE_POR_VEZ` (30), en un solo pedido por cadena); la foto llega en el próximo boot. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
+  la ficha, una **tarea programada** del Worker (`scheduled` en `worker/index.js`, cada 3 horas: `[triggers]` de
+  `wrangler.toml`) corre `completarOnline`: los productos con código de todo el catálogo, primero los sin foto y
+  después los de consulta más vieja, hasta `ONLINE_CRON_MAX` (120) por vez, de a `ONLINE_POR_VEZ` (30) EAN en un
+  solo pedido por cadena (`actualizarOnline`). `/api/boot` también busca en segundo plano los suyos sin foto. El
+  código de uno que no lo tiene se lo pone también quien lo ve (un amigo): sólo eso, y sin pisar uno que ya está.
+  Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 

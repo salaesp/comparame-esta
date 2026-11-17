@@ -80,14 +80,18 @@ async function parecidos(id) {
 }
 
 // Lo corrige quien lo creó o quien tiene algún precio cargado de él (el catálogo es de
-// todos: no lo cambia cualquiera).
+// todos: no lo cambia cualquiera). El código de barras de uno que no lo tiene ("¿Es alguno
+// de estos?") se lo pone también quien lo ve (con un precio suyo o de un amigo): suma, no pisa.
+const soloEan = (b) => b && typeof b === 'object' && Object.keys(b).length === 1 && 'ean' in b;
 async function editar(userId, id, b) {
   const [p] = await sql(
-    `select ${COLS} from productos where id = ?1
-        and (creado_por = ?2 or exists (select 1 from precios where producto_id = ?1 and user_id = ?2))`,
+    `select ${COLS},
+            (creado_por = ?2 or exists (select 1 from precios where producto_id = ?1 and user_id = ?2)) as suyo,
+            exists (select 1 from precios where producto_id = ?1 and user_id in ${visibles('?2')}) as lo_ve
+       from productos where id = ?1`,
     [id, userId],
   );
-  if (!p) return error('no encontrado', 404);
+  if (!p || !(p.suyo || (p.lo_ve && soloEan(b) && !p.ean && b.ean))) return error('no encontrado', 404);
   const nombre = b?.nombre != null ? tidyNombre(String(b.nombre).slice(0, 100)) : p.nombre;
   if (!nombre) return error('Falta el nombre.', 422);
   const marca = b?.marca != null ? tidyNombre(String(b.marca).slice(0, 60)) : p.marca;
@@ -119,5 +123,6 @@ async function editar(userId, id, b) {
   ]);
   return json({ ok: true, producto: row });
 }
+
 
 export const config = { path: ['/api/productos', '/api/productos/:id', '/api/productos/:id/online', '/api/productos/:id/parecidos'] };

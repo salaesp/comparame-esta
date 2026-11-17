@@ -13,6 +13,7 @@ import * as lugares from '../api/lugares.mjs';
 import * as productos from '../api/productos.mjs';
 import * as tickets from '../api/tickets.mjs';
 import { setDbEnv } from '../lib/db.mjs';
+import { completarOnline } from '../lib/online.mjs';
 
 const MODULES = [amigos, authCallback, authLogin, authLogout, boot, compartir, lugares, productos, tickets];
 
@@ -29,6 +30,11 @@ export function match(segs, pathname) {
 }
 
 export default {
+  // La tarea programada (wrangler.toml [triggers]): los precios y las fotos de las webs.
+  async scheduled(event, env, ctx) {
+    setDbEnv(env);
+    ctx.waitUntil(completarOnline().then((n) => console.log('[online] cron', n, 'códigos'), (e) => console.error('[online] cron', e?.stack || e)));
+  },
   async fetch(request, env, ctx) {
     setDbEnv(env);
     const pathname = new URL(request.url).pathname.replace(/\/+$/, '') || '/';

@@ -29,3 +29,8 @@ mode = "smart"
 
 [observability]
 enabled = true
+
+# La tarea programada: cada 3 horas busca en las webs de los súper los precios y las fotos de
+# los productos con código (lib/online.mjs completarOnline; el handler `scheduled` del Worker).
+[triggers]
+crons = ["23 */3 * * *"]

@@ -316,3 +316,66 @@ test('lo consultado antes de guardar las fotos se vuelve a consultar (con la ver
   await sql(MIGRATIONS.find((m) => m.startsWith('delete from online_consultas')));
   assert.deepEqual((await sql('select distinct ean from online_consultas')).map((r) => r.ean), [LECHE]);
 });
+
+test('el código de un producto sin código se lo pone también un amigo que lo ve; lo demás, no', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  const beto = await usuario(sql, 'beto@x.com');
+  const carla = await usuario(sql, 'carla@x.com');
+  const [a, b] = ana.id < beto.id ? [ana.id, beto.id] : [beto.id, ana.id];
+  await sql('insert into amistades (user_a, user_b) values (?1, ?2)', [a, b]);
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [t] = await sql('insert into tickets (user_id, fecha) values (?1, ?2) returning id', [ana.id, hoy]);
+  const [p] = await sql("insert into productos (nombre, creado_por) values ('Yerba', ?1) returning id", [ana.id]);
+  await sql("insert into precios (ticket_id, user_id, producto_id, fecha, texto, cantidad, importe, pagado, precio_unit) values (?1, ?2, ?3, ?4, 'x', 1, 100, 100, 100)", [t.id, ana.id, p.id, hoy]);
+
+  // Carla no lo ve: nada. Beto (amigo) no le cambia el nombre…
+  assert.equal((await pedir(worker, carla, 'PATCH', `/api/productos/${p.id}`, { ean: '7793704000928' })).status, 404);
+  assert.equal((await pedir(worker, beto, 'PATCH', `/api/productos/${p.id}`, { nombre: 'Otra' })).status, 404);
+  assert.equal((await pedir(worker, beto, 'PATCH', `/api/productos/${p.id}`, { ean: '7793704000928', nombre: 'Otra' })).status, 404);
+  // …pero sí le pone el código que le falta.
+  const r = await pedir(worker, beto, 'PATCH', `/api/productos/${p.id}`, { ean: '7793704000928' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.producto.ean, '7793704000928');
+  assert.equal(r.data.producto.nombre, 'Yerba');
+  // Uno que ya tiene código no lo pisa (Ana, que lo cargó, sí lo corrige).
+  assert.equal((await pedir(worker, beto, 'PATCH', `/api/productos/${p.id}`, { ean: '7798133500605' })).status, 404);
+  assert.equal((await pedir(worker, ana, 'PATCH', `/api/productos/${p.id}`, { ean: '7798133500605' })).status, 200);
+});
+
+test('la tarea programada busca sola los productos con código: primero los sin foto, después los de precio viejo', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const { completarOnline } = await import('../lib/online.mjs');
+  const viejo = new Date(Date.now() - (ONLINE_FRESCO_HORAS + 1) * 3600_000).toISOString();
+  const muyViejo = new Date(Date.now() - 3 * 864e5).toISOString();
+  // Tres productos del catálogo (de nadie en particular): la leche ya tiene foto y se
+  // consultó hace 3 días; la yerba, sin foto y hace un día; las pepitas, nunca.
+  for (const [n, e] of [['Leche', LECHE], ['Yerba', '7793704000928'], ['Pepitas', PEPITAS], ['Banana', '']]) await sql('insert into productos (nombre, ean) values (?1, ?2)', [n, e]);
+  await sql("insert into online_productos (cadena, sku, ean, nombre, precio, imagen, visto_at, cambio_at) values ('Jumbo', '1', ?1, 'Leche', 3031, 'https://x/l.jpg', ?2, ?2)", [LECHE, muyViejo]);
+  for (const c of TODAS) {
+    await sql('insert into online_consultas (cadena, ean, consultado_at) values (?1, ?2, ?3)', [c, LECHE, muyViejo]);
+    await sql('insert into online_consultas (cadena, ean, consultado_at) values (?1, ?2, ?3)', [c, '7793704000928', viejo]);
+  }
+  const pedidos = [];
+  setOnlineFetch(async (url) => { pedidos.push(new URL(url).searchParams.getAll('fq').map((f) => f.split(':')[1])); return new Response('[]'); });
+
+  // De a uno: las pepitas (nunca), la yerba (sin foto), la leche (con foto, aunque sea la más vieja).
+  assert.equal(await completarOnline({ max: 1 }), 1);
+  assert.deepEqual(pedidos.pop(), [PEPITAS]);
+  assert.equal(await completarOnline({ max: 1 }), 1);
+  assert.deepEqual(pedidos.pop(), ['7793704000928']);
+  assert.equal(await completarOnline({ max: 1 }), 1);
+  assert.deepEqual(pedidos.pop(), [LECHE]);
+  assert.equal(await completarOnline(), 0); // todo fresco
+
+  // El Worker lo corre en su handler `scheduled`.
+  await sql('update online_consultas set consultado_at = ?1', [viejo]);
+  const espera = [];
+  pedidos.length = 0;
+  await worker.scheduled({ cron: '23 */3 * * *' }, {}, { waitUntil: (p) => espera.push(p) });
+  await Promise.all(espera);
+  assert.equal(pedidos.length, TODAS.length); // un pedido por cadena, con los tres códigos
+  assert.equal(pedidos[0].length, 3);
+});
