@@ -5,13 +5,15 @@
 //                                  lo guardado de las tiendas online por su EAN (lib/online.mjs) y
 //                                  `online_buscando`: las cadenas a las que hay que preguntarles
 //   GET   /api/productos/:id/online -> les pregunta a esas cadenas y devuelve lo online
+//   GET   /api/productos/:id/parecidos -> sin EAN: los de las webs que se le parecen, para elegir
+//                                  cuál es (y ponerle su EAN con PATCH)
 //   PATCH /api/productos/:id    -> corregir nombre, marca, medida o EAN
 import { json, error, readJson, segs } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { visibles } from '../lib/amigos.mjs';
 import { normTexto, nombreKey, medidaDe, eanValido, tidyNombre } from '../lib/productos.mjs';
-import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL } from '../lib/online.mjs';
+import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, parecidosOnline } from '../lib/online.mjs';
 
 const COLS = 'id, nombre, marca, medida, medida_unidad, ean, creado_por';
 
@@ -22,6 +24,7 @@ export default async function (req) {
   if (!id && req.method === 'GET') return buscar(new URL(req.url).searchParams.get('q'));
   if (id && !s3 && req.method === 'GET') return uno(me.userId, id);
   if (id && s3 === 'online' && req.method === 'GET') return online(id);
+  if (id && s3 === 'parecidos' && req.method === 'GET') return parecidos(id);
   if (id && !s3 && req.method === 'PATCH') return editar(me.userId, id, await readJson(req));
   return error('método no permitido', 405);
 }
@@ -38,7 +41,7 @@ async function buscar(q) {
 const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unidad, precio, precio_lista, precio_medida, promos, disponible, visto_at, cambio_at
     from online_productos
    where ean <> '' and ean = (select ean from productos where id = ?1)
-   order by coalesce(precio_medida, precio), cadena`;
+   order by disponible desc, coalesce(precio_medida, precio), cadena`;
 
 async function uno(userId, id) {
   const [[p], precios, online, consultas] = await txBatch([
@@ -49,7 +52,8 @@ async function uno(userId, id) {
         from precios pr left join lugares l on l.id = pr.lugar_id
        where pr.producto_id = ?1 and pr.user_id in ${visibles('?2')}
        order by pr.fecha desc`, [id, userId]],
-    // Lo de las tiendas online (lib/online.mjs), por el EAN, y cuándo se les preguntó.
+    // Lo de las tiendas online (lib/online.mjs), por el EAN, y cuándo se les preguntó. Lo sin
+    // stock va al final: VTEX lo devuelve con el precio de cuando se vendía.
     [ONLINE_SQL, [id]],
     [CONSULTAS_SQL.replace('?1', '(select ean from productos where id = ?1)'), [id]],
   ]);
@@ -67,6 +71,12 @@ async function online(id) {
   if (!p) return error('no encontrado', 404);
   if (p.ean) await actualizarOnline(p.ean);
   return json({ ok: true, online: await sql(ONLINE_SQL, [id]) });
+}
+
+async function parecidos(id) {
+  const [p] = await sql(`select ${COLS} from productos where id = ?1`, [id]);
+  if (!p) return error('no encontrado', 404);
+  return json({ ok: true, parecidos: p.ean ? [] : await parecidosOnline(p) });
 }
 
 // Lo corrige quien lo creó o quien tiene algún precio cargado de él (el catálogo es de
@@ -110,4 +120,4 @@ async function editar(userId, id, b) {
   return json({ ok: true, producto: row });
 }
 
-export const config = { path: ['/api/productos', '/api/productos/:id', '/api/productos/:id/online'] };
+export const config = { path: ['/api/productos', '/api/productos/:id', '/api/productos/:id/online', '/api/productos/:id/parecidos'] };

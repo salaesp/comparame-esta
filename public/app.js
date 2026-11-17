@@ -666,17 +666,46 @@ function onlineRowHtml(o, p) {
   </a>`;
 }
 
-// Mientras se les pregunta a las webs: "Buscando en Jumbo, Vea y DIA…".
+// Mientras se les pregunta a las webs: "Buscando en Jumbo, Vea y DIA…" (o el texto que se pase).
 const enumerar = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}` : xs[0] || '');
 function onlineBuscandoHtml(cadenas) {
+  const txt = Array.isArray(cadenas) ? `Buscando en ${enumerar(cadenas)}…` : cadenas;
   return `<div class="mrow onlinebusca" role="status"><span class="mvf__spin" aria-hidden="true"></span>
-    <span class="mrow__text"><span class="mrow__title">Buscando en ${esc(enumerar(cadenas))}…</span></span></div>`;
+    <span class="mrow__text"><span class="mrow__title">${esc(txt)}</span></span></div>`;
 }
+
+// Un producto sin código de barras: buscarlo en las webs por el nombre ("¿Es alguno de
+// estos?", lib/online.mjs parecidosOnline). Elegir uno le pone su código.
+//   null → el botón; 'buscando'; [] → no hay nada; [x…] → los parecidos
+function parecidosHtml(parecidos) {
+  if (parecidos == null) {
+    return `<button type="button" class="mrow txrow" data-parecidos>
+      <span class="mrow__ic" aria-hidden="true">${ic('search', 20)}</span>
+      <span class="mrow__text"><span class="mrow__title">Buscarlo en las webs</span>
+        <span class="mrow__subline">Sin código de barras: lo busco por el nombre</span></span></button>`;
+  }
+  if (parecidos === 'buscando') return onlineBuscandoHtml('Buscando parecidos en las webs…');
+  if (!parecidos.length) return '<p class="note">No encontré nada parecido en las webs. Si tiene código de barras, cargalo en «Corregir el producto».</p>';
+  return `<p class="note parecidos__q">¿Es alguno de estos? Elegilo y desde ahí se compara solo.</p>
+    ${parecidos.map(parecidoRowHtml).join('')}
+    <button type="button" class="linkbtn parecidos__no" data-parecidos-no>No es ninguno</button>`;
+}
+function parecidoRowHtml(x) {
+  const donde = x.cadenas.length ? `En ${enumerar(x.cadenas.length > 3 ? [...x.cadenas.slice(0, 2), `${x.cadenas.length - 2} más`] : x.cadenas)}` : 'Sin stock';
+  const med = medidaLabel(x.medida, x.medida_unidad);
+  return `<button type="button" class="mrow txrow" data-parecido="${esc(x.ean)}">
+    <span class="mrow__ic parecido__img" aria-hidden="true">${x.imagen ? `<img src="${esc(x.imagen)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ic('search', 20)}</span>
+    <span class="mrow__text"><span class="mrow__title">${esc(x.nombre)}</span>
+      <span class="row__meta"><span class="movchips">${med ? `<span class="chip">${esc(med)}</span>` : ''}<span class="chip">${esc(donde)}</span></span></span></span>
+  </button>`;
+}
+// Lo que la ficha abierta sabe hacer con sus botones (los toques van por el handler global).
+let fichaProducto = null;
 
 // La ficha de un producto: ¿dónde está más barato? Con el historial entero del server y,
 // si tiene EAN, lo de las webs de los súper (lo guardado enseguida; lo que falta, después).
 async function openProducto(pid) {
-  let data = { producto: state.productos.get(pid), precios: preciosDe(pid), online: [], buscando: [] };
+  let data = { producto: state.productos.get(pid), precios: preciosDe(pid), online: [], buscando: [], parecidos: null };
   const paint = () => {
     const p = data.producto;
     if (!p) return `${modalHead('Producto')}<p class="note">No encontré el producto.</p>`;
@@ -707,7 +736,8 @@ async function openProducto(pid) {
           <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(precioDe(frescos[frescos.length - 1].precio) - precioDe(mejor.precio))} menos que en el más caro` : ''}</span>
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
-      ${data.online.length || data.buscando.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>` : ''}
+      ${data.online.length || data.buscando.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>`
+        : !p.ean && data.parecidos !== 'no' ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${parecidosHtml(data.parecidos)}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
       ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
@@ -716,23 +746,56 @@ async function openProducto(pid) {
         <button type="button" class="set__btn" data-prod-edit="${esc(p.id)}">${ic('edit', 18)} Corregir el producto</button>
       </div>`;
   };
-  openModal({ render: paint });
-  try {
-    const d = await apiFetch(`/api/productos/${encodeURIComponent(pid)}`);
-    data = { producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [] };
-    state.productos.set(pid, d.producto);
-    if (modalState?.render === paint) repaintModal();
-  } catch (e) {
-    if (e.status !== 401 && !data.producto) toast(e.message, { icon: 'error' });
-    return;
+  const abierta = () => modalState?.render === paint;
+  const pintar = () => { if (abierta()) repaintModal(); };
+  const url = `/api/productos/${encodeURIComponent(pid)}`;
+  // Lo del server y, si hay cadenas por consultar, las webs (mientras, "Buscando en…").
+  async function cargar() {
+    try {
+      const d = await apiFetch(url);
+      data = { ...data, producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [] };
+      state.productos.set(pid, d.producto);
+      pintar();
+    } catch (e) {
+      if (e.status !== 401 && !data.producto) toast(e.message, { icon: 'error' });
+      return;
+    }
+    if (!data.buscando.length) return;
+    try {
+      const o = await apiFetch(`${url}/online`);
+      data = { ...data, online: o.online || [] };
+    } catch { /* sin las webs: queda lo guardado */ }
+    data = { ...data, buscando: [] };
+    pintar();
   }
-  if (!data.buscando.length) return;
-  try {
-    const o = await apiFetch(`/api/productos/${encodeURIComponent(pid)}/online`);
-    data = { ...data, online: o.online || [] };
-  } catch { /* sin las webs: queda lo guardado */ }
-  data = { ...data, buscando: [] };
-  if (modalState?.render === paint) repaintModal();
+  fichaProducto = {
+    async buscarParecidos() {
+      data = { ...data, parecidos: 'buscando' };
+      pintar();
+      try {
+        data = { ...data, parecidos: (await apiFetch(`${url}/parecidos`)).parecidos || [] };
+      } catch (e) {
+        data = { ...data, parecidos: null };
+        if (e.status !== 401) toast('No pude buscar en las webs. Probá de nuevo.', { icon: 'error' });
+      }
+      pintar();
+    },
+    async elegir(ean) {
+      try {
+        const d = await apiFetch(url, { method: 'PATCH', body: { ean } });
+        state.productos.set(pid, d.producto);
+        data = { ...data, producto: d.producto, parecidos: null };
+        toast('Ahora se compara por su código en todas las webs', { lead: 'Listo', icon: 'ok' });
+        cargar();
+      } catch (e) {
+        if (e.status === 404) toast('Sólo lo puede cambiar quien lo cargó.', { icon: 'error' });
+        else if (e.status !== 401) toast(e.message, { icon: 'error' });
+      }
+    },
+    no() { data = { ...data, parecidos: 'no' }; pintar(); },
+  };
+  openModal({ render: paint, onClose: () => { fichaProducto = null; } });
+  await cargar();
 }
 
 const UNIDADES_MEDIDA = [['g', 'g'], ['kg', 'kg'], ['ml', 'ml'], ['l', 'L'], ['u', 'unidades']];
@@ -2230,6 +2293,10 @@ document.addEventListener('click', (e) => {
   if (td) { deleteTicket(td.dataset.ticketDel); return; }
   const pe = t.closest('[data-prod-edit]');
   if (pe) { openProductoEdit(pe.dataset.prodEdit); return; }
+  if (t.closest('[data-parecidos]')) { fichaProducto?.buscarParecidos(); return; }
+  const pa = t.closest('[data-parecido]');
+  if (pa) { fichaProducto?.elegir(pa.dataset.parecido); return; }
+  if (t.closest('[data-parecidos-no]')) { fichaProducto?.no(); return; }
   const am = t.closest('[data-amigo]');
   if (am) { openAmigo(am.dataset.amigo); return; }
   const qa = t.closest('[data-quitar-amigo]');
@@ -2316,7 +2383,7 @@ function registerSW() {
 // pinta cada componente con su función de verdad (public/design-system/ds.js).
 if (window.__DS__) {
   window.comparame = {
-    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, onlineRowHtml, onlineBuscandoHtml, revRowHtml,
+    state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, onlineRowHtml, onlineBuscandoHtml, parecidosHtml, revRowHtml,
     controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml, fotosAddHtml,
     setRev: (r) => { rev = r; },
   };

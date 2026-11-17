@@ -44,7 +44,7 @@ test('normalizarVtex: precio, tachado, medida, por kg y sin las promos de tarjet
   assert.deepEqual(pepitas, {
     sku: '50140', ean: PEPITAS, nombre: 'Pepitas artesanales dulce de leche', marca: '', medida: 200, medida_unidad: 'g',
     unidad: 'u', categoria: 'Panadería', url: 'https://www.carrefour.com.ar/pepitas-artesanales-dulce-de-leche-50140/p',
-    precio: 3999, precio_lista: 5699, precio_medida: 19995, promos: '', disponible: 1,
+    precio: 3999, precio_lista: 5699, precio_medida: 19995, promos: '', disponible: 1, imagen: '',
   });
   // La leche: 1000 cm3 → 1 litro.
   const [leche] = normalizarVtex(porNombre('Leche La serenisima clásica'));
@@ -209,4 +209,55 @@ test('la misma leche en varias cadenas: una por cadena, de la más barata a la m
   assert.equal(r.online[0].url, 'https://www.vea.com.ar/leche-uat-serenisima-3-1-lt/p');
   // El mismo sku en dos cadenas son dos productos distintos.
   assert.equal((await sql('select count(*) as n from online_productos'))[0].n, 3);
+});
+
+test('sin EAN: "¿Es alguno de estos?" busca en las webs por texto; elegir uno le pone el código', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  const [p] = await sql("insert into productos (nombre, marca, medida, medida_unidad, creado_por) values ('Yerba mate suave', 'Playadito', 1000, 'g', ?1) returning id", [ana.id]);
+  const YERBA = fixture('vtex-buscar-yerba.json');
+  // En Jumbo, la misma Playadito sin stock (con el precio viejo).
+  const sinStock = copia(YERBA[0]);
+  Object.assign(sinStock.items[0].sellers[0].commertialOffer, { AvailableQuantity: 0, IsAvailable: false });
+  const urls = [];
+  setOnlineFetch(async (url) => {
+    urls.push(String(url));
+    const h = new URL(url).hostname;
+    return new Response(JSON.stringify(h === 'www.carrefour.com.ar' ? YERBA : h === 'www.jumbo.com.ar' ? [sinStock] : []));
+  });
+
+  const r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`);
+  assert.equal(r.status, 200);
+  assert.equal(urls.length, 6);
+  assert.ok(urls.includes('https://www.carrefour.com.ar/api/catalog_system/pub/products/search?ft=Playadito%20Yerba%20mate%20suave%201%20kg&_from=0&_to=9'));
+  // Sólo la Playadito: las otras son de otra marca (Romance, Unión, Amanda…).
+  assert.deepEqual(r.data.parecidos.map((x) => x.ean), ['7793704000928']);
+  const [x] = r.data.parecidos;
+  assert.deepEqual(x.cadenas, ['Carrefour']); // en Jumbo no hay stock
+  assert.equal(x.medida, 1000);
+  assert.match(x.imagen, /^https:\/\/carrefourar\.vteximg\.com\.br\//);
+  assert.equal(x.precio, undefined);
+
+  // Elegirlo es ponerle el EAN: desde ahí la ficha busca por el código en todas.
+  const e = await pedir(worker, ana, 'PATCH', `/api/productos/${p.id}`, { ean: x.ean });
+  assert.equal(e.status, 200);
+  assert.equal(e.data.producto.ean, '7793704000928');
+  const f = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
+  assert.deepEqual(f.data.online_buscando, TODAS);
+  // Con EAN ya no ofrece parecidos.
+  assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`)).data.parecidos, []);
+});
+
+test('lo sin stock va al final aunque su precio (el de cuando se vendía) sea el más bajo', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  const [p] = await sql("insert into productos (nombre, ean) values ('Leche', ?1) returning id", [LECHE]);
+  const leche = porNombre('Leche Uat Serenisima', JUMBO);
+  const vieja = copia(leche);
+  Object.assign(vieja.items[0].sellers[0].commertialOffer, { Price: 700, AvailableQuantity: 0, IsAvailable: false });
+  tiendas({ 'www.jumbo.com.ar': [leche], 'www.vea.com.ar': [vieja] });
+  const r = await abrir(worker, ana, p.id);
+  assert.deepEqual(r.online.map((o) => [o.cadena, o.precio, o.disponible]), [['Jumbo', 3031, 1], ['Vea', 700, 0]]);
 });

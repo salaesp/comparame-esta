@@ -106,7 +106,12 @@ Toda la UI y los textos van en castellano rioplatense.
   Neto" de Cencosud o, si no, el nombre: `medidaDeTexto`) y las
   promos sin las de tarjeta o banco. La ficha los muestra aparte ("En las webs de los súper", `onlineRowHtml`,
   con cuándo los mostró la web), sin mezclarlos con los de los tickets, del más barato al más caro. Sumar otra cadena VTEX es sumar su renglón
-  (y probar cómo vienen el tachado y la medida). Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
+  (y probar cómo vienen el tachado y la medida). Lo sin stock va al final: VTEX lo devuelve con el precio de
+  cuando se vendía. **Sin EAN**, la ficha ofrece "Buscarlo en las webs" (`parecidosHtml`):
+  `GET /api/productos/:id/parecidos` (`parecidosOnline`) lo busca por texto (`ft=`, marca + nombre + medida) en
+  todas las cadenas y devuelve hasta `PARECIDOS_MAX` (3) con EAN, filtrados y ordenados con `candidatos` (misma
+  marca y medida, palabras en común), con su foto y dónde hay stock (sin precio). Nunca se elige solo: tocar uno
+  le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 

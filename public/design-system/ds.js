@@ -70,6 +70,11 @@ function pintar() {
         { cadena: 'Carrefour', url: 'https://www.carrefour.com.ar/', unidad: 'u', precio: 3999, precio_lista: 5699, precio_medida: 7998, promos: '', disponible: 1, visto_at: new Date().toISOString() },
         { cadena: 'Jumbo', url: 'https://www.jumbo.com.ar/', unidad: 'u', precio: 4450, precio_lista: null, precio_medida: 8900, promos: '2do al 70%', disponible: 0, visto_at: new Date(Date.now() - 3 * 864e5).toISOString() },
       ].map((o) => c.onlineRowHtml(o, st.productos.get('p1'))).join('')}${c.onlineBuscandoHtml(['Vea', 'ChangoMás', 'DIA'])}</div>`),
+    sec('¿Es alguno de estos?', 'Un producto sin código de barras, en su ficha (<code>parecidosHtml</code>): primero el botón; al tocarlo, se lo busca por el nombre en las webs y se ofrecen los parecidos de la misma marca y medida (<code>parecidoRowHtml</code>, con su foto y dónde hay stock). Elegir uno le pone su código y desde ahí se compara solo.',
+      `<div class="tcard ds__phone">${c.parecidosHtml(null)}</div><div class="tcard ds__phone" style="margin-top:12px">${c.parecidosHtml([
+        { ean: '7793704000928', nombre: 'Yerba mate Playadito suave con palo 1 kg.', medida: 1000, medida_unidad: 'g', imagen: '', cadenas: ['Carrefour', 'Jumbo', 'Disco', 'Vea', 'ChangoMás', 'DIA'] },
+        { ean: '7793704000010', nombre: 'Yerba Playadito Suave 1 Kg', medida: 1000, medida_unidad: 'g', imagen: '', cadenas: [] },
+      ])}</div>`),
     sec('Lo que cambió', '<code>cambioRowHtml</code>: el último precio en un lugar contra el anterior en el mismo lugar.',
       `<div class="tcard ds__phone">${c.cambioRowHtml({ ultimo: st.precios[0], antes: st.precios[2], pct: 0.111 })}</div>`),
     sec('La revisión de un ticket', 'Cada renglón leído (<code>revRowHtml</code>): reconocido, nuevo, con una sugerencia o que no cierra.',
