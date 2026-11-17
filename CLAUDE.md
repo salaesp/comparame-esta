@@ -9,9 +9,14 @@ Toda la UI y los textos van en castellano rioplatense.
 - **Login con Google** (cliente OAuth propio de esta app), con un **cupo** de `MAX_USERS` (50)
   personas, como Gastienzos (`lib/cupo.mjs`: `allowed_emails` pasan siempre, el resto a
   `lista_espera`).
-- **Cargar un ticket**: el "+" (cámara) abre "Nuevo ticket"; se sacan una o varias fotos (hasta
-  `FOTOS_MAX`, 6) o se eligen de la galería, se achican en el teléfono (1600 px, JPEG 0,8) —o un **PDF** (la factura por mail, "Galería o PDF"), que va tal
-  cual como `document` (`PDF_RE`, `PDF_MAX_BYTES`)— y van
+- **Cargar un ticket**: el "+" (cámara) abre "Nuevo ticket" sin disparar nada solo (`abrirCarga`); un
+  solo botón, "Agregar foto o PDF" (`fotosAddHtml`, el input `foto-in` sin `capture`: el teléfono
+  ofrece cámara, galería o archivos). También llegan arrastrándolas (en la compu) o por
+  **Compartir** desde otra app (`share_target` del manifest → `POST /api/compartir`, que atiende el
+  SW: guarda los archivos en la caché `comparame-compartido` y abre `/?compartido=1`,
+  `recibirCompartido`; sin SW, `api/compartir.mjs` vuelve con `?compartido=0`). Hasta `FOTOS_MAX`
+  (6) fotos, que se achican en el teléfono (1600 px, JPEG 0,8) —o un **PDF** (la factura por mail),
+  que va tal cual como `document` (`PDF_RE`, `PDF_MAX_BYTES`)— y van
   **todas juntas en un solo pedido** a `POST /api/tickets/leer`, que las manda a **Claude**
   (`lib/lector.mjs`, SDK `@anthropic-ai/sdk`, structured outputs con `RESPUESTA_SCHEMA`). La consigna
   dice que son partes seguidas de un mismo ticket y que el principio de una foto puede repetir el
@@ -131,7 +136,7 @@ historial entero.
 ```
 public/   index.html (la app en "/"), app.js, styles.css (la capa genérica de "Suave"),
           app.css (lo propio), sw.js, manifest, novedades.json, design-system/
-api/      auth-login, auth-callback, auth-logout, boot, amigos, tickets, productos, lugares
+api/      auth-login, auth-callback, auth-logout, boot, amigos, tickets, productos, lugares, compartir
 lib/      http, db, schema, auth, cupo, amigos, lector, ticket, productos, catalogo, geo
 scripts/  bump-ui-version.mjs, medir-modelos.mjs
 test/     node --test; los de server contra SQLite real (test/helpers/d1.mjs)

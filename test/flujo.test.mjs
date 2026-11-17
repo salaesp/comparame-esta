@@ -178,3 +178,9 @@ test('leer un PDF (la factura por mail): le llega a Claude como documento', asyn
   const malo = await pedir(worker, ana, 'POST', '/api/tickets/leer', { fotos: ['data:text/plain;base64,AAAA'] });
   assert.equal(malo.status, 422);
 });
+
+test('"Compartir" sin el service worker: vuelve a la app avisando que no llegó', async () => {
+  const r = await worker.fetch(new Request('https://comparame.test/api/compartir', { method: 'POST', body: new FormData() }), { ASSETS: { fetch: async () => new Response('asset') } }, { waitUntil() {} });
+  assert.equal(r.status, 303);
+  assert.equal(r.headers.get('location'), '/?compartido=0');
+});

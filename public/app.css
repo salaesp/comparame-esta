@@ -62,13 +62,20 @@
   color: var(--muted); font-weight: 700; letter-spacing: .04em; }
 .fotos__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fotos__item figcaption { position: absolute; left: 8px; bottom: 8px; min-width: 24px; height: 24px; border-radius: var(--r-full);
-  display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: var(--t-label); }
+  display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: var(--t-body-s); }
 .fotos__x { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border: none; border-radius: 50%;
   display: grid; place-items: center; background: var(--scrim-strong); color: var(--toast-text); cursor: pointer; }
 .fotos__add { aspect-ratio: 3 / 4; border: 2px dashed var(--outline); border-radius: var(--r-m); background: none; color: var(--accent-ink);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600; cursor: pointer; }
-.fotos__add--ghost { color: var(--muted); }
+.fotos__add--big { grid-column: 1 / -1; aspect-ratio: auto; min-height: 220px; text-align: center; padding: 24px; }
+.fotos__hint { color: var(--muted); font-weight: 400; font-size: var(--t-body-s); }
+.fotos__drop { display: none; }
+@media (hover: hover) and (pointer: fine) { .fotos__drop { display: inline; } }
 .fotos__add:hover { background: var(--card-deep); }
+/* Arrastrando archivos sobre la app: un aviso de dónde soltarlos. */
+html.soltando body::after { content: 'Soltá acá las fotos o el PDF del ticket'; position: fixed; inset: 12px; z-index: 1000;
+  display: grid; place-items: center; border: 3px dashed var(--accent-ink); border-radius: var(--r-l);
+  background: color-mix(in srgb, var(--bg) 88%, transparent); color: var(--accent-ink); font-weight: 700; font-size: var(--t-title-l); pointer-events: none; }
 
 /* Leyendo: el spinner que muta, al medio. */
 .leyendo { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 64px 16px; text-align: center; }

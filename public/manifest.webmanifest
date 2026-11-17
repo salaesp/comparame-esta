@@ -7,6 +7,12 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "share_target": {
+    "action": "/api/compartir",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": { "title": "title", "text": "text", "files": [{ "name": "archivos", "accept": ["image/*", "application/pdf", ".pdf"] }] }
+  },
   "background_color": "#100F0E",
   "theme_color": "#100F0E",
   "icons": [

@@ -71,8 +71,8 @@
       <div class="modal__scrim" data-close></div>
       <section class="modal__panel" id="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section>
     </div>
-    <!-- Las fotos del ticket: la cámara (capture) y la galería (varias). -->
-    <input type="file" id="foto-cam" accept="image/*" capture="environment" hidden />
-    <input type="file" id="foto-gal" accept="image/*,application/pdf,.pdf" multiple hidden />
+    <!-- Las fotos o el PDF del ticket: un solo input, sin capture, para que el teléfono
+         ofrezca en su menú la cámara, la galería y los archivos. -->
+    <input type="file" id="foto-in" accept="image/*,application/pdf,.pdf" multiple hidden />
   </body>
 </html>

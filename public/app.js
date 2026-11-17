@@ -1560,6 +1560,13 @@ function leerPdf(file) {
     r.readAsDataURL(file);
   });
 }
+// El único botón para sumar: el teléfono abre su menú (cámara, galería, archivos).
+function fotosAddHtml(n) {
+  return n
+    ? `<button type="button" class="fotos__add" data-foto-add>${ic('plus', 28)}<span>Agregar otra parte</span></button>`
+    : `<button type="button" class="fotos__add fotos__add--big" data-foto-add>${ic('camera', 32)}<span>Agregar foto o PDF</span>
+        <small class="fotos__hint">Cámara, galería o archivos<span class="fotos__drop"> · o arrastralos acá</span></small></button>`;
+}
 function fotoItemHtml(f, i) {
   const cara = esPdfUri(f)
     ? `<div class="fotos__pdf">${ic('receipt', 32)}<span>PDF</span></div>`
@@ -1572,8 +1579,12 @@ const carga = { fotos: [], leyendo: null };
 function nuevoTicket() {
   if (!state.lector) { showError('Todavía no se pueden leer tickets', 'Falta configurar la lectura con IA en el server.'); return; }
   carga.fotos = [];
+  abrirCarga();
+}
+// "Nuevo ticket" no abre nada solo: un botón ofrece el menú del teléfono (cámara, galería
+// o archivos). También llegan por "Compartir" (recibirCompartido) o arrastrándolas.
+function abrirCarga() {
   openModal({ render: fotosHtml, full: true, onClose: () => { carga.leyendo?.abort(); carga.leyendo = null; } });
-  $('foto-cam').click();
 }
 function fotosHtml() {
   const n = carga.fotos.length;
@@ -1585,11 +1596,8 @@ function fotosHtml() {
         <button type="button" class="set__btn" data-cancelar-lectura>Cancelar</button></div>`;
   }
   return `${modalHead('Nuevo ticket', n ? `${n} ${n === 1 ? 'foto' : 'fotos'}` : '')}
-    <p class="modal__lead">${n ? '¿Sigue el ticket? Sacale otra foto a la parte que falta. Que se pise un poco con la anterior.' : 'Sacale una foto al ticket. Si es largo, sacale varias, de arriba hacia abajo. Si te llegó en PDF, elegilo de tus archivos.'}</p>
-    <div class="fotos">${carga.fotos.map(fotoItemHtml).join('')}
-      ${n < FOTOS_MAX ? `<button type="button" class="fotos__add" data-foto-cam>${ic('camera', 28)}<span>${n ? 'Otra foto' : 'Sacar foto'}</span></button>
-        <button type="button" class="fotos__add fotos__add--ghost" data-foto-gal>${ic('gallery', 28)}<span>Galería o PDF</span></button>` : ''}
-    </div>
+    <p class="modal__lead">${n ? '¿Sigue el ticket? Agregá la parte que falta. Que se pise un poco con la anterior.' : 'Sacale una foto al ticket o elegila de la galería. Si es largo, varias, de arriba hacia abajo. Si te llegó por mail, elegí el PDF.'}</p>
+    <div class="fotos">${carga.fotos.map(fotoItemHtml).join('')}${n < FOTOS_MAX ? fotosAddHtml(n) : ''}</div>
     ${n ? `<div class="mvf__foot"><button type="button" class="mvf__submit" data-leer>Leer el ticket</button></div>` : ''}`;
 }
 async function addFotos(files) {
@@ -1607,8 +1615,51 @@ async function addFotos(files) {
   }
   repaintModal();
 }
-$('foto-cam').addEventListener('change', (e) => { addFotos(e.target.files); e.target.value = ''; });
-$('foto-gal').addEventListener('change', (e) => { addFotos(e.target.files); e.target.value = ''; });
+$('foto-in')?.addEventListener('change', (e) => { addFotos(e.target.files); e.target.value = ''; });
+
+// Arrastrar fotos o un PDF (en la compu): con la app abierta o con "Nuevo ticket" abierto.
+const conArchivos = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+const puedeSoltar = () => state.user && state.lector && !carga.leyendo && (!modalState || modalState.render === fotosHtml);
+document.addEventListener('dragover', (e) => {
+  if (!conArchivos(e) || !puedeSoltar()) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  document.documentElement.classList.add('soltando');
+});
+document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.documentElement.classList.remove('soltando'); });
+document.addEventListener('drop', (e) => {
+  document.documentElement.classList.remove('soltando');
+  if (!conArchivos(e) || !puedeSoltar()) return;
+  e.preventDefault();
+  if (!modalState) carga.fotos = [];
+  addFotos(e.dataTransfer.files);
+});
+
+// "Compartir" desde otra app (el PDF del mail, una foto): el service worker recibe el
+// POST de /api/compartir (share_target del manifest), guarda los archivos en la caché
+// COMPARTIDO y abre /?compartido=1. Sin el SW, el Worker contesta /?compartido=0.
+const COMPARTIDO = 'comparame-compartido';
+async function recibirCompartido(ok) {
+  history.replaceState(null, '', '/');
+  const fallo = () => toast('No pude recibir el archivo. Probá compartirlo de nuevo.', { icon: 'error' });
+  if (!ok || !('caches' in window)) { fallo(); return; }
+  let files = [];
+  try {
+    const c = await caches.open(COMPARTIDO);
+    for (const k of await c.keys()) {
+      const r = await c.match(k);
+      const b = await r.blob();
+      files.push(new File([b], decodeURIComponent(r.headers.get('x-nombre') || 'ticket'), { type: r.headers.get('content-type') || b.type }));
+    }
+    await caches.delete(COMPARTIDO);
+  } catch { fallo(); return; }
+  if (!files.length) return;
+  if (!state.lector) { showError('Todavía no se pueden leer tickets', 'Falta configurar la lectura con IA en el server.'); return; }
+  files = files.filter((f) => f.type.startsWith('image/') || esPdfFile(f));
+  if (!files.length) { toast('Eso no es una foto ni un PDF.', { icon: 'error' }); return; }
+  carga.fotos = [];
+  await addFotos(files);
+}
 
 async function leerFotos() {
   const ctl = new AbortController();
@@ -2149,8 +2200,7 @@ document.addEventListener('click', (e) => {
   const qa = t.closest('[data-quitar-amigo]');
   if (qa) { const id = qa.dataset.quitarAmigo; closeLayer(); setTimeout(() => quitarAmigo(id), 0); return; }
   // La carga de un ticket.
-  if (t.closest('[data-foto-cam]')) { $('foto-cam').click(); return; }
-  if (t.closest('[data-foto-gal]')) { $('foto-gal').click(); return; }
+  if (t.closest('[data-foto-add]')) { $('foto-in').click(); return; }
   const fx = t.closest('[data-foto-x]');
   if (fx) { carga.fotos.splice(Number(fx.dataset.fotoX), 1); repaintModal(); return; }
   if (t.closest('[data-leer]')) { leerFotos(); return; }
@@ -2203,6 +2253,8 @@ async function boot() {
   showView('inicio', { scroll: false });
   const amigo = new URLSearchParams(location.search).get('amigo');
   if (amigo) aceptarInvitacion(amigo);
+  const compartido = new URLSearchParams(location.search).get('compartido');
+  if (compartido !== null) recibirCompartido(compartido === '1');
   registerSW();
 }
 
@@ -2230,7 +2282,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml, fotosAddHtml,
     setRev: (r) => { rev = r; },
   };
 } else {
