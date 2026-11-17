@@ -679,18 +679,12 @@ function onlineBuscandoHtml(cadenas) {
     <span class="mrow__text"><span class="mrow__title">${esc(txt)}</span></span></div>`;
 }
 
-// Un producto sin código de barras: buscarlo en las webs por el nombre ("¿Es alguno de
-// estos?", lib/online.mjs parecidosOnline). Elegir uno le pone su código.
-//   null → el botón; 'buscando'; [] → no hay nada; [x…] → los parecidos
+// Un producto sin código de barras: se lo busca solo en las webs por el nombre ("¿Es alguno
+// de estos?", lib/online.mjs parecidosOnline; el server lo guarda una semana). Elegir uno le
+// pone su código. 'buscando' → buscando; [x…] → los parecidos; sin nada, no se muestra.
 function parecidosHtml(parecidos) {
-  if (parecidos == null) {
-    return `<button type="button" class="mrow txrow" data-parecidos>
-      <span class="mrow__ic" aria-hidden="true">${ic('search', 20)}</span>
-      <span class="mrow__text"><span class="mrow__title">Buscarlo en las webs</span>
-        <span class="mrow__subline">Sin código de barras: lo busco por el nombre</span></span></button>`;
-  }
   if (parecidos === 'buscando') return onlineBuscandoHtml('Buscando parecidos en las webs…');
-  if (!parecidos.length) return '<p class="note">No encontré nada parecido en las webs. Si tiene código de barras, cargalo en «Corregir el producto».</p>';
+  if (!Array.isArray(parecidos) || !parecidos.length) return '';
   return `<p class="note parecidos__q">¿Es alguno de estos? Elegilo y desde ahí se compara solo.</p>
     ${parecidos.map(parecidoRowHtml).join('')}
     <button type="button" class="linkbtn parecidos__no" data-parecidos-no>No es ninguno</button>`;
@@ -703,6 +697,14 @@ function parecidoRowHtml(x) {
     <span class="mrow__text"><span class="mrow__title">${esc(x.nombre)}</span>
       <span class="row__meta"><span class="movchips">${med ? `<span class="chip">${esc(med)}</span>` : ''}<span class="chip">${esc(donde)}</span></span></span></span>
   </button>`;
+}
+// "No es ninguno": este teléfono no lo vuelve a ofrecer para ese producto (cmp:noEsNinguno).
+const NO_ES_KEY = 'cmp:noEsNinguno';
+function noEsNinguno() {
+  try { return JSON.parse(localStorage.getItem(NO_ES_KEY) || '[]'); } catch { return []; }
+}
+function marcarNoEsNinguno(pid) {
+  try { localStorage.setItem(NO_ES_KEY, JSON.stringify([...noEsNinguno().filter((x) => x !== pid), pid].slice(-500))); } catch { /* sin storage */ }
 }
 // Lo que la ficha abierta sabe hacer con sus botones (los toques van por el handler global).
 let fichaProducto = null;
@@ -743,7 +745,7 @@ async function openProducto(pid) {
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
       ${data.online.length || data.buscando.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>`
-        : !p.ean && data.parecidos !== 'no' ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${parecidosHtml(data.parecidos)}</div>` : ''}
+        : !p.ean && parecidosHtml(data.parecidos) ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${parecidosHtml(data.parecidos)}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
       ${hist.length > 1 ? `<details class="hist"><summary>Todos los precios (${hist.length})</summary><div class="gcard">${hist.map((pr) => `<button type="button" class="hist__row hist__row--btn" data-ticket="${esc(pr.ticket_id)}"><span>${esc(fmtFechaLarga(pr.fecha))} · ${esc(lugarNombre(lugarDe(pr.lugar_id) || pr))} · ${esc(quien(pr.user_id))}</span><b>${fmtMoney(precioDe(pr))}</b></button>`).join('')}</div></details>` : ''}
@@ -759,10 +761,13 @@ async function openProducto(pid) {
   async function cargar() {
     try {
       const d = await apiFetch(url);
-      data = { ...data, producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [] };
+      const ofrecer = !noEsNinguno().includes(pid);
+      data = { ...data, producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [],
+        parecidos: ofrecer ? d.parecidos || [] : [] };
       state.productos.set(pid, d.producto);
       ponerFoto();
       pintar();
+      if (ofrecer && d.parecidos_buscar) fichaProducto?.buscarParecidos();
     } catch (e) {
       if (e.status !== 401 && !data.producto) toast(e.message, { icon: 'error' });
       return;
@@ -790,9 +795,8 @@ async function openProducto(pid) {
       pintar();
       try {
         data = { ...data, parecidos: (await apiFetch(`${url}/parecidos`)).parecidos || [] };
-      } catch (e) {
-        data = { ...data, parecidos: null };
-        if (e.status !== 401) toast('No pude buscar en las webs. Probá de nuevo.', { icon: 'error' });
+      } catch {
+        data = { ...data, parecidos: [] }; // sin las webs: no se ofrece nada
       }
       pintar();
     },
@@ -800,7 +804,7 @@ async function openProducto(pid) {
       try {
         const d = await apiFetch(url, { method: 'PATCH', body: { ean } });
         const foto = (Array.isArray(data.parecidos) && data.parecidos.find((x) => x.ean === ean)?.imagen) || '';
-        data = { ...data, producto: { ...d.producto, foto }, parecidos: null };
+        data = { ...data, producto: { ...d.producto, foto }, parecidos: [] };
         state.productos.set(pid, data.producto);
         toast('Ahora se compara por su código en todas las webs', { lead: 'Listo', icon: 'ok' });
         cargar();
@@ -809,7 +813,7 @@ async function openProducto(pid) {
         else if (e.status !== 401) toast(e.message, { icon: 'error' });
       }
     },
-    no() { data = { ...data, parecidos: 'no' }; pintar(); },
+    no() { marcarNoEsNinguno(pid); data = { ...data, parecidos: [] }; pintar(); },
   };
   openModal({ render: paint, onClose: () => { fichaProducto = null; } });
   await cargar();
@@ -2310,7 +2314,6 @@ document.addEventListener('click', (e) => {
   if (td) { deleteTicket(td.dataset.ticketDel); return; }
   const pe = t.closest('[data-prod-edit]');
   if (pe) { openProductoEdit(pe.dataset.prodEdit); return; }
-  if (t.closest('[data-parecidos]')) { fichaProducto?.buscarParecidos(); return; }
   const pa = t.closest('[data-parecido]');
   if (pa) { fichaProducto?.elegir(pa.dataset.parecido); return; }
   if (t.closest('[data-parecidos-no]')) { fichaProducto?.no(); return; }

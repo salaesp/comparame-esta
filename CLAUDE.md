@@ -107,11 +107,13 @@ Toda la UI y los textos van en castellano rioplatense.
   promos sin las de tarjeta o banco. La ficha los muestra aparte ("En las webs de los súper", `onlineRowHtml`,
   con cuándo los mostró la web), sin mezclarlos con los de los tickets, del más barato al más caro. Sumar otra cadena VTEX es sumar su renglón
   (y probar cómo vienen el tachado y la medida). Lo sin stock va al final: VTEX lo devuelve con el precio de
-  cuando se vendía. **Sin EAN**, la ficha ofrece "Buscarlo en las webs" (`parecidosHtml`):
-  `GET /api/productos/:id/parecidos` (`parecidosOnline`) lo busca por texto (`ft=`, marca + nombre + medida) en
+  cuando se vendía. **Sin EAN** (y si no va por peso), la ficha busca sola los parecidos (`parecidosHtml`):
+  trae los guardados (`online_parecidos`, `PARECIDOS_DIAS` (7), y de nuevo si cambia la búsqueda) o `parecidos_buscar`,
+  y entonces `GET /api/productos/:id/parecidos` (`parecidosOnline`, `buscarParecidos`) lo busca por texto (`ft=`, marca + nombre + medida) en
   todas las cadenas y devuelve hasta `PARECIDOS_MAX` (3) con EAN, filtrados y ordenados con `candidatos` (misma
   marca y medida, palabras en común), con su foto y dónde hay stock (sin precio). Nunca se elige solo: tocar uno
-  le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código. **La foto** de un
+  le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código; "No es ninguno" no
+  lo vuelve a ofrecer en ese teléfono (`localStorage['cmp:noEsNinguno']`). Sin nada parecido, no se muestra. **La foto** de un
   producto es la de las webs con su EAN (`online_productos.imagen`, `FOTO_SQL` en `/api/boot` y en la ficha; primero
   la de una con stock): en la lista (`prodIcHtml`) y en la ficha, al lado del precio. Para que la tengan sin abrir
   la ficha, una **tarea programada** del Worker (`scheduled` en `worker/index.js`, cada 3 horas: `[triggers]` de

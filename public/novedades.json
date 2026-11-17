@@ -1,5 +1,12 @@
 [
   {
+    "version": "next",
+    "fecha": "",
+    "notas": [
+      "En la ficha de un producto sin código de barras, los parecidos de las webs aparecen solos, sin tocar nada. Si no es ninguno, tocá «No es ninguno» y no te lo vuelve a ofrecer."
+    ]
+  },
+  {
     "version": "0.10.1",
     "fecha": "2026-11-17",
     "notas": [

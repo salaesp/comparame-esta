@@ -6,14 +6,16 @@
 //                                  `online_buscando`: las cadenas a las que hay que preguntarles
 //   GET   /api/productos/:id/online -> les pregunta a esas cadenas y devuelve lo online
 //   GET   /api/productos/:id/parecidos -> sin EAN: los de las webs que se le parecen, para elegir
-//                                  cuál es (y ponerle su EAN con PATCH)
+//                                  cuál es (y ponerle su EAN con PATCH). La ficha trae los guardados
+//                                  (`parecidos`) o `parecidos_buscar` si hay que buscarlos. Lo que va
+//                                  por peso no se busca (no tiene código).
 //   PATCH /api/productos/:id    -> corregir nombre, marca, medida o EAN
 import { json, error, readJson, segs } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { visibles } from '../lib/amigos.mjs';
 import { normTexto, nombreKey, medidaDe, eanValido, tidyNombre } from '../lib/productos.mjs';
-import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, FOTO_SQL, parecidosOnline } from '../lib/online.mjs';
+import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, FOTO_SQL, parecidosGuardados, buscarParecidos } from '../lib/online.mjs';
 
 const COLS = 'id, nombre, marca, medida, medida_unidad, ean, creado_por';
 
@@ -44,7 +46,7 @@ const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unid
    order by disponible desc, coalesce(precio_medida, precio), cadena`;
 
 async function uno(userId, id) {
-  const [[p], precios, online, consultas] = await txBatch([
+  const [[p], precios, online, consultas, [guardados]] = await txBatch([
     [`select ${COLS}, ${FOTO_SQL} from productos where id = ?1`, [id]],
     [`select pr.id, pr.ticket_id, pr.user_id, pr.lugar_id, pr.fecha, pr.texto, pr.cantidad, pr.unidad, pr.precio_lista,
              pr.importe, pr.descuento, pr.pagado, pr.precio_unit, pr.precio_medida,
@@ -56,12 +58,16 @@ async function uno(userId, id) {
     // stock va al final: VTEX lo devuelve con el precio de cuando se vendía.
     [ONLINE_SQL, [id]],
     [CONSULTAS_SQL.replace('?1', '(select ean from productos where id = ?1)'), [id]],
+    ['select q, buscado_at, parecidos from online_parecidos where producto_id = ?1', [id]],
   ]);
   if (!p) return error('no encontrado', 404);
   // A las que no se les preguntó hace poco, la app les pregunta aparte (GET …/online) mientras
   // muestra "Buscando en…": así la ficha no espera a las tiendas.
   const online_buscando = p.ean ? cadenasPorConsultar(consultas).map((c) => c.nombre) : [];
-  return json({ ok: true, producto: p, precios, online, online_buscando });
+  // Sin código (y si no va por peso): los parecidos guardados o que hay que buscarlos.
+  const buscable = !p.ean && !porPeso(precios);
+  const parecidos = buscable ? parecidosGuardados(guardados, p) : null;
+  return json({ ok: true, producto: p, precios, online, online_buscando, parecidos: parecidos || [], parecidos_buscar: buscable && !parecidos });
 }
 
 // Les pregunta (a la vez, con timeout) a las cadenas que no se consultaron hace poco y
@@ -73,10 +79,18 @@ async function online(id) {
   return json({ ok: true, online: await sql(ONLINE_SQL, [id]) });
 }
 
+// Lo que va por peso (todos sus precios en kg): fruta, verdura, fiambre. No tiene código.
+const porPeso = (precios) => precios.length > 0 && precios.every((pr) => pr.unidad === 'kg');
+
 async function parecidos(id) {
-  const [p] = await sql(`select ${COLS} from productos where id = ?1`, [id]);
+  const [[p], unidades, [guardados]] = await txBatch([
+    [`select ${COLS} from productos where id = ?1`, [id]],
+    ['select distinct unidad from precios where producto_id = ?1', [id]],
+    ['select q, buscado_at, parecidos from online_parecidos where producto_id = ?1', [id]],
+  ]);
   if (!p) return error('no encontrado', 404);
-  return json({ ok: true, parecidos: p.ean ? [] : await parecidosOnline(p) });
+  if (p.ean || porPeso(unidades)) return json({ ok: true, parecidos: [] });
+  return json({ ok: true, parecidos: parecidosGuardados(guardados, p) || await buscarParecidos(p) });
 }
 
 // Lo corrige quien lo creó o quien tiene algún precio cargado de él (el catálogo es de

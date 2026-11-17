@@ -379,3 +379,46 @@ test('la tarea programada busca sola los productos con código: primero los sin 
   assert.equal(pedidos.length, TODAS.length); // un pedido por cadena, con los tres códigos
   assert.equal(pedidos[0].length, 3);
 });
+
+test('los parecidos se buscan una vez y quedan guardados; cambiar el nombre los vuelve a buscar; lo por peso, nunca', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [t] = await sql('insert into tickets (user_id, fecha) values (?1, ?2) returning id', [ana.id, hoy]);
+  const [yerba] = await sql("insert into productos (nombre, marca, medida, medida_unidad, creado_por) values ('Yerba mate suave', 'Playadito', 1000, 'g', ?1) returning id", [ana.id]);
+  const [banana] = await sql("insert into productos (nombre, creado_por) values ('Banana', ?1) returning id", [ana.id]);
+  const precio = (pid, unidad) => sql("insert into precios (ticket_id, user_id, producto_id, fecha, texto, cantidad, unidad, importe, pagado, precio_unit) values (?1, ?2, ?3, ?4, 'x', 1, ?5, 100, 100, 100)", [t.id, ana.id, pid, hoy, unidad]);
+  await precio(yerba.id, 'u');
+  await precio(banana.id, 'kg');
+  const YERBA = fixture('vtex-buscar-yerba.json');
+  let n = 0;
+  setOnlineFetch(async (url) => { n++; return new Response(JSON.stringify(new URL(url).hostname === 'www.carrefour.com.ar' ? YERBA : [])); });
+
+  // La ficha dice que hay que buscarlos; buscarlos los guarda.
+  let f = await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}`);
+  assert.equal(f.data.parecidos_buscar, true);
+  assert.deepEqual(f.data.parecidos, []);
+  let r = await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}/parecidos`);
+  assert.deepEqual(r.data.parecidos.map((x) => x.ean), ['7793704000928']);
+  assert.equal(n, 6);
+  // La próxima, vienen en la ficha y no se sale a las webs.
+  f = await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}`);
+  assert.equal(f.data.parecidos_buscar, false);
+  assert.deepEqual(f.data.parecidos.map((x) => x.ean), ['7793704000928']);
+  r = await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}/parecidos`);
+  assert.equal(n, 6);
+  // Con otro nombre, se busca de nuevo; pasada una semana, también.
+  await pedir(worker, ana, 'PATCH', `/api/productos/${yerba.id}`, { nombre: 'Yerba mate suave con palo' });
+  assert.equal((await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}`)).data.parecidos_buscar, true);
+  await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}/parecidos`);
+  assert.equal(n, 12);
+  await sql("update online_parecidos set buscado_at = '2020-01-01T00:00:00.000Z'");
+  assert.equal((await pedir(worker, ana, 'GET', `/api/productos/${yerba.id}`)).data.parecidos_buscar, true);
+
+  // La banana va por peso: ni se ofrece buscarla ni se busca.
+  f = await pedir(worker, ana, 'GET', `/api/productos/${banana.id}`);
+  assert.equal(f.data.parecidos_buscar, false);
+  assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${banana.id}/parecidos`)).data.parecidos, []);
+  assert.equal(n, 12);
+});
