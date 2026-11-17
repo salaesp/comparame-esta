@@ -246,7 +246,7 @@ test('sin EAN: "¿Es alguno de estos?" busca en las webs por texto; elegir uno l
   const f = await pedir(worker, ana, 'GET', `/api/productos/${p.id}`);
   assert.deepEqual(f.data.online_buscando, TODAS);
   // Con EAN ya no ofrece parecidos.
-  assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`)).data.parecidos, []);
+  assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`)).data.parecidos, null);
 });
 
 test('lo sin stock va al final aunque su precio (el de cuando se vendía) sea el más bajo', async () => {
@@ -419,7 +419,7 @@ test('los parecidos se buscan una vez y quedan guardados; cambiar el nombre los 
   // La banana va por peso: ni se ofrece buscarla ni se busca.
   f = await pedir(worker, ana, 'GET', `/api/productos/${banana.id}`);
   assert.equal(f.data.parecidos_buscar, false);
-  assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${banana.id}/parecidos`)).data.parecidos, []);
+  assert.deepEqual((await pedir(worker, ana, 'GET', `/api/productos/${banana.id}/parecidos`)).data.parecidos, null);
   assert.equal(n, 12);
 });
 
@@ -468,4 +468,40 @@ test('buscar en las webs: uno por código, con el más barato con stock; se guar
   assert.equal(urls.length, 6); // ninguna se había consultado por el código
   assert.deepEqual(f.data.online.map((o) => o.cadena), ['Jumbo', 'Carrefour']);
   assert.equal((await pedir(worker, ana, 'GET', '/api/productos/web/123')).status, 422);
+});
+
+test('parecidos: si ninguna web contesta no se guarda; sin nada con la medida, se busca sin ella; la marca puede estar escrita distinto', async () => {
+  const { sql } = await baseNueva();
+  const worker = (await import('../worker/index.js')).default;
+  const ana = await usuario(sql, 'ana@x.com');
+  // "Serenísima" en el ticket; "La Serenísima" en la web. La medida del ticket está mal (2 L).
+  const [p] = await sql("insert into productos (nombre, marca, medida, medida_unidad, creado_por) values ('Leche entera clásica', 'Serenísima', 2000, 'ml', ?1) returning id", [ana.id]);
+  const DIA = fixture('vtex-dia.json');
+  const leche = copia(DIA.find((x) => x.productName.startsWith('Leche Protein')));
+  Object.assign(leche, { productName: 'Leche Entera Clásica La Serenísima 1 L', brand: 'La Serenísima' });
+  leche.items[0].nameComplete = leche.productName;
+
+  // Ninguna contesta: nada, y no queda guardado.
+  setOnlineFetch(async () => { throw new Error('bloqueado'); });
+  let r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`);
+  assert.deepEqual(r.data.parecidos, []);
+  assert.equal((await sql('select count(*) as n from online_parecidos'))[0].n, 0);
+  assert.equal((await pedir(worker, ana, 'GET', `/api/productos/${p.id}`)).data.parecidos_buscar, true);
+
+  // Con la medida ("… 2 L") no hay nada de 2 L; sin ella aparece la de 1 L de La Serenísima.
+  const qs = [];
+  setOnlineFetch(async (url) => {
+    const u = new URL(url);
+    if (u.hostname === 'diaonline.supermercadosdia.com.ar') qs.push(u.searchParams.get('ft'));
+    return new Response(JSON.stringify(u.hostname === 'diaonline.supermercadosdia.com.ar' ? [leche] : []));
+  });
+  r = await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`);
+  assert.deepEqual(qs, ['Serenísima Leche entera clásica 2 L', 'Serenísima Leche entera clásica']);
+  assert.equal(r.data.parecidos.length, 1);
+  assert.equal(r.data.parecidos[0].ean, leche.items[0].ean);
+  // "Buscar de nuevo" no usa lo guardado.
+  await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos`);
+  assert.equal(qs.length, 2);
+  await pedir(worker, ana, 'GET', `/api/productos/${p.id}/parecidos?de_nuevo=1`);
+  assert.equal(qs.length, 4);
 });

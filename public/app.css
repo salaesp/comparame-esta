@@ -38,7 +38,6 @@ a.mrow { text-decoration: none; color: inherit; }
   object-fit: contain; border-radius: var(--r-m); }
 .parecidos__q { margin: var(--sp-2) 0; text-align: left; }
 #prod-web .setsub { display: block; margin-top: var(--sp-4); }
-.parecidos__no { margin: var(--sp-2) 0 var(--sp-1); align-self: flex-start; }
 /* Un renglón que no cierra (importe > cantidad × precio): borde coral. */
 .mrow--warn { box-shadow: inset 3px 0 0 var(--neg); }
 .mrow:disabled { cursor: default; }

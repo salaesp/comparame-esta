@@ -33,7 +33,7 @@ export default async function (req) {
   if (id === 'web' && s3 && req.method === 'GET') return web(s3);
   if (id && !s3 && req.method === 'GET') return uno(me.userId, id);
   if (id && s3 === 'online' && req.method === 'GET') return online(id);
-  if (id && s3 === 'parecidos' && req.method === 'GET') return parecidos(id);
+  if (id && s3 === 'parecidos' && req.method === 'GET') return parecidos(id, new URL(req.url).searchParams.get('de_nuevo') === '1');
   if (id && !s3 && req.method === 'PATCH') return editar(me.userId, id, await readJson(req));
   return error('método no permitido', 405);
 }
@@ -74,7 +74,8 @@ async function uno(userId, id) {
   // Sin código (y si no va por peso): los parecidos guardados o que hay que buscarlos.
   const buscable = !p.ean && !porPeso(precios);
   const parecidos = buscable ? parecidosGuardados(guardados, p) : null;
-  return json({ ok: true, producto: p, precios, online, online_buscando, parecidos: parecidos || [], parecidos_buscar: buscable && !parecidos });
+  // parecidos: null si no se busca (tiene código o va por peso); [] si se buscó y no hubo nada.
+  return json({ ok: true, producto: p, precios, online, online_buscando, parecidos: buscable ? parecidos || [] : null, parecidos_buscar: buscable && !parecidos });
 }
 
 // Les pregunta (a la vez, con timeout) a las cadenas que no se consultaron hace poco y
@@ -96,15 +97,16 @@ async function web(ean) {
 // Lo que va por peso (todos sus precios en kg): fruta, verdura, fiambre. No tiene código.
 const porPeso = (precios) => precios.length > 0 && precios.every((pr) => pr.unidad === 'kg');
 
-async function parecidos(id) {
+// ?de_nuevo=1: sin lo guardado ("Buscar de nuevo").
+async function parecidos(id, deNuevo = false) {
   const [[p], unidades, [guardados]] = await txBatch([
     [`select ${COLS} from productos where id = ?1`, [id]],
     ['select distinct unidad from precios where producto_id = ?1', [id]],
     ['select q, buscado_at, parecidos from online_parecidos where producto_id = ?1', [id]],
   ]);
   if (!p) return error('no encontrado', 404);
-  if (p.ean || porPeso(unidades)) return json({ ok: true, parecidos: [] });
-  return json({ ok: true, parecidos: parecidosGuardados(guardados, p) || await buscarParecidos(p) });
+  if (p.ean || porPeso(unidades)) return json({ ok: true, parecidos: null });
+  return json({ ok: true, parecidos: (!deNuevo && parecidosGuardados(guardados, p)) || await buscarParecidos(p) });
 }
 
 // Lo corrige quien lo creó o quien tiene algún precio cargado de él (el catálogo es de

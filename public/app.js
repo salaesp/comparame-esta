@@ -768,14 +768,15 @@ function onlineBuscandoHtml(cadenas) {
 }
 
 // Un producto sin código de barras: se lo busca solo en las webs por el nombre ("¿Es alguno
-// de estos?", lib/online.mjs parecidosOnline; el server lo guarda una semana). Elegir uno le
-// pone su código. 'buscando' → buscando; [x…] → los parecidos; sin nada, no se muestra.
+// de estos?", lib/online.mjs parecidosOnline; el server lo guarda una semana). Elegir uno (con
+// confirmación) le pone su código. 'buscando' → buscando; [x…] → los parecidos; [] → no
+// apareció (con "Buscar de nuevo"); null → no se busca (tiene código o va por peso).
 function parecidosHtml(parecidos) {
   if (parecidos === 'buscando') return onlineBuscandoHtml('Buscando parecidos en las webs…');
-  if (!Array.isArray(parecidos) || !parecidos.length) return '';
+  if (!Array.isArray(parecidos)) return '';
+  if (!parecidos.length) return `<p class="note parecidos__q">No lo encontré en las webs. <button type="button" class="linkbtn" data-parecidos-de-nuevo>Buscar de nuevo</button></p>`;
   return `<p class="note parecidos__q">¿Es alguno de estos? Elegilo y desde ahí se compara solo.</p>
-    ${parecidos.map(parecidoRowHtml).join('')}
-    <button type="button" class="linkbtn parecidos__no" data-parecidos-no>No es ninguno</button>`;
+    ${parecidos.map(parecidoRowHtml).join('')}`;
 }
 function parecidoRowHtml(x) {
   const donde = x.cadenas.length ? `En ${enumerar(x.cadenas.length > 3 ? [...x.cadenas.slice(0, 2), `${x.cadenas.length - 2} más`] : x.cadenas)}` : 'Sin stock';
@@ -786,14 +787,8 @@ function parecidoRowHtml(x) {
       <span class="row__meta"><span class="movchips">${med ? `<span class="chip">${esc(med)}</span>` : ''}<span class="chip">${esc(donde)}</span></span></span></span>
   </button>`;
 }
-// "No es ninguno": este teléfono no lo vuelve a ofrecer para ese producto (cmp:noEsNinguno).
-const NO_ES_KEY = 'cmp:noEsNinguno';
-function noEsNinguno() {
-  try { return JSON.parse(localStorage.getItem(NO_ES_KEY) || '[]'); } catch { return []; }
-}
-function marcarNoEsNinguno(pid) {
-  try { localStorage.setItem(NO_ES_KEY, JSON.stringify([...noEsNinguno().filter((x) => x !== pid), pid].slice(-500))); } catch { /* sin storage */ }
-}
+// Lo que dejó el "No es ninguno" de antes (cmp:noEsNinguno) ya no se usa: se borra.
+try { localStorage.removeItem('cmp:noEsNinguno'); } catch { /* sin storage */ }
 // Lo que la ficha abierta sabe hacer con sus botones (los toques van por el handler global).
 let fichaProducto = null;
 
@@ -849,13 +844,12 @@ async function openProducto(pid) {
   async function cargar() {
     try {
       const d = await apiFetch(url);
-      const ofrecer = !noEsNinguno().includes(pid);
       data = { ...data, producto: d.producto, precios: d.precios, online: d.online || [], buscando: d.online_buscando || [],
-        parecidos: ofrecer ? d.parecidos || [] : [] };
+        parecidos: d.parecidos_buscar ? 'buscando' : d.parecidos ?? null };
       state.productos.set(pid, d.producto);
       ponerFoto();
       pintar();
-      if (ofrecer && d.parecidos_buscar) fichaProducto?.buscarParecidos();
+      if (d.parecidos_buscar) fichaProducto?.buscarParecidos();
     } catch (e) {
       if (e.status !== 401 && !data.producto) toast(e.message, { icon: 'error' });
       return;
@@ -878,21 +872,27 @@ async function openProducto(pid) {
     if (state.view === 'productos' && $('prod-list')) { $('prod-list').innerHTML = productosListHtml(); hydrateIcons($('prod-list')); }
   }
   fichaProducto = {
-    async buscarParecidos() {
+    async buscarParecidos(deNuevo = false) {
       data = { ...data, parecidos: 'buscando' };
       pintar();
       try {
-        data = { ...data, parecidos: (await apiFetch(`${url}/parecidos`)).parecidos || [] };
+        data = { ...data, parecidos: (await apiFetch(`${url}/parecidos${deNuevo ? '?de_nuevo=1' : ''}`)).parecidos ?? null };
       } catch {
-        data = { ...data, parecidos: [] }; // sin las webs: no se ofrece nada
+        data = { ...data, parecidos: [] }; // sin las webs: "No lo encontré", con "Buscar de nuevo"
       }
       pintar();
     },
     async elegir(ean) {
+      const x = Array.isArray(data.parecidos) ? data.parecidos.find((y) => y.ean === ean) : null;
+      if (!x) return;
+      const ok = await askConfirm('¿Es este producto?', {
+        text: `«${productoNombre(data.producto)}» queda con el código de «${x.nombre}» (${x.ean}) y desde ahí se compara por él en todas las webs. El nombre no cambia.`,
+        ok: 'Sí, es este',
+      });
+      if (!ok) return;
       try {
         const d = await apiFetch(url, { method: 'PATCH', body: { ean } });
-        const foto = (Array.isArray(data.parecidos) && data.parecidos.find((x) => x.ean === ean)?.imagen) || '';
-        data = { ...data, producto: { ...d.producto, foto }, parecidos: [] };
+        data = { ...data, producto: { ...d.producto, foto: x.imagen || '' }, parecidos: null };
         state.productos.set(pid, data.producto);
         toast('Ahora se compara por su código en todas las webs', { lead: 'Listo', icon: 'ok' });
         cargar();
@@ -901,7 +901,6 @@ async function openProducto(pid) {
         else if (e.status !== 401) toast(e.message, { icon: 'error' });
       }
     },
-    no() { marcarNoEsNinguno(pid); data = { ...data, parecidos: [] }; pintar(); },
   };
   openModal({ render: paint, onClose: () => { fichaProducto = null; } });
   await cargar();
@@ -2406,7 +2405,7 @@ document.addEventListener('click', (e) => {
   if (we) { abrirWeb(we.dataset.webEan); return; }
   const pa = t.closest('[data-parecido]');
   if (pa) { fichaProducto?.elegir(pa.dataset.parecido); return; }
-  if (t.closest('[data-parecidos-no]')) { fichaProducto?.no(); return; }
+  if (t.closest('[data-parecidos-de-nuevo]')) { fichaProducto?.buscarParecidos(true); return; }
   const am = t.closest('[data-amigo]');
   if (am) { openAmigo(am.dataset.amigo); return; }
   const qa = t.closest('[data-quitar-amigo]');

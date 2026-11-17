@@ -109,11 +109,13 @@ Toda la UI y los textos van en castellano rioplatense.
   (y probar cómo vienen el tachado y la medida). Lo sin stock va al final: VTEX lo devuelve con el precio de
   cuando se vendía. **Sin EAN** (y si no va por peso), la ficha busca sola los parecidos (`parecidosHtml`):
   trae los guardados (`online_parecidos`, `PARECIDOS_DIAS` (7), y de nuevo si cambia la búsqueda) o `parecidos_buscar`,
-  y entonces `GET /api/productos/:id/parecidos` (`parecidosOnline`, `buscarParecidos`) lo busca por texto (`ft=`, marca + nombre + medida) en
-  todas las cadenas y devuelve hasta `PARECIDOS_MAX` (3) con EAN, filtrados y ordenados con `candidatos` (misma
-  marca y medida, palabras en común), con su foto y dónde hay stock (sin precio). Nunca se elige solo: tocar uno
-  le pone ese EAN al producto (`PATCH /api/productos/:id`) y desde ahí se compara por el código; "No es ninguno" no
-  lo vuelve a ofrecer en ese teléfono (`localStorage['cmp:noEsNinguno']`). Sin nada parecido, no se muestra. **La foto** de un
+  y entonces `GET /api/productos/:id/parecidos` (`parecidosOnline`, `buscarParecidos`) lo busca por texto (`ft=`, marca + nombre + medida y,
+  si no aparece nada, sin la medida ni para buscar ni para filtrar) en todas las cadenas y devuelve hasta
+  `PARECIDOS_MAX` (3) con EAN, filtrados y ordenados con `candidatos` (misma marca —o una contiene a la otra:
+  `mismaMarca`— y medida, palabras en común), con su foto y dónde hay stock (sin precio). Si ninguna cadena
+  contesta no se guarda (se intenta de nuevo). Nunca se elige solo: tocar uno pide confirmación (`askConfirm`) y le
+  pone ese EAN al producto (`PATCH /api/productos/:id`); desde ahí se compara por el código. Sin nada parecido
+  dice "No lo encontré en las webs" con "Buscar de nuevo" (`?de_nuevo=1`, sin lo guardado). **La foto** de un
   producto es la de las webs con su EAN (`online_productos.imagen`, `FOTO_SQL` en `/api/boot` y en la ficha; primero
   la de una con stock): en la lista (`prodIcHtml`) y en la ficha, al lado del precio. Para que la tengan sin abrir
   la ficha, una **tarea programada** del Worker (`scheduled` en `worker/index.js`, cada 3 horas: `[triggers]` de
@@ -214,5 +216,5 @@ componente con su función real y datos de ejemplo. **Al crear o cambiar un comp
 - **Fechas**: el día del ticket es el de la zona del teléfono (`hoyIso()`, nunca
   `toISOString().slice(0, 10)`).
 - `askConfirm` sólo para lo irreversible (borrar un ticket, quitar un amigo, guardar con la suma que
-  no da).
+  no da) y para ponerle a un producto el código de uno de la web ("¿Es este producto?").
 - Tests: `npm test`. Un cambio de server lleva su test contra SQLite real (`test/flujo.test.mjs`).
