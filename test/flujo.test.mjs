@@ -165,3 +165,16 @@ test('con la lectura fallida responde con el motivo y anota la lectura', async (
   assert.equal(r.data.motivo, 'rechazo');
   assert.equal((await db.sql('select count(*) as n from lecturas where ok = 0'))[0].n, 1);
 });
+
+test('leer un PDF (la factura por mail): le llega a Claude como documento', async () => {
+  let pedido;
+  const stream = (p) => { pedido = p; return { finalMessage: async () => ({ model: p.model, stop_reason: 'end_turn', usage: { input_tokens: 9000, output_tokens: 3000 }, content: [{ type: 'text', text: JSON.stringify(carrefour.respuesta) }] }) }; };
+  setAnthropic({ messages: { stream }, beta: { messages: { stream } } });
+  const r = await pedir(worker, ana, 'POST', '/api/tickets/leer', { fotos: ['data:application/pdf;base64,JVBERi0x'], hoy: '2026-10-26' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.lectura.renglones.length, 19);
+  const [doc] = pedido.messages[0].content.filter((b) => b.type === 'document');
+  assert.deepEqual(doc.source, { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0x' });
+  const malo = await pedir(worker, ana, 'POST', '/api/tickets/leer', { fotos: ['data:text/plain;base64,AAAA'] });
+  assert.equal(malo.status, 422);
+});

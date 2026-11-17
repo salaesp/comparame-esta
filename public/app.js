@@ -1548,6 +1548,26 @@ async function shrinkPhoto(file) {
   return c.toDataURL('image/jpeg', FOTO_JPEG_Q);
 }
 
+// Un PDF (la factura electrónica que llega por mail) no se achica: va tal cual, con tope.
+const PDF_MAX_BYTES = 4_000_000;
+const esPdfUri = (f) => f.startsWith('data:application/pdf;');
+const esPdfFile = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+function leerPdf(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).replace(/^data:[^;,]*;/, 'data:application/pdf;'));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+function fotoItemHtml(f, i) {
+  const cara = esPdfUri(f)
+    ? `<div class="fotos__pdf">${ic('receipt', 32)}<span>PDF</span></div>`
+    : `<img src="${f}" alt="Foto ${i + 1}">`;
+  return `<figure class="fotos__item">${cara}<figcaption>${i + 1}</figcaption>
+    <button type="button" class="fotos__x" data-foto-x="${i}" aria-label="Sacar ${esPdfUri(f) ? 'el PDF' : 'la foto'} ${i + 1}">${ic('x', 16)}</button></figure>`;
+}
+
 const carga = { fotos: [], leyendo: null };
 function nuevoTicket() {
   if (!state.lector) { showError('Todavía no se pueden leer tickets', 'Falta configurar la lectura con IA en el server.'); return; }
@@ -1560,25 +1580,29 @@ function fotosHtml() {
   if (carga.leyendo) {
     return `${modalHead('Leyendo el ticket')}
       <div class="leyendo"><div class="spinner" aria-hidden="true"></div>
-        <p class="leyendo__t">Leyendo ${n === 1 ? 'la foto' : `las ${n} fotos`}…</p>
+        <p class="leyendo__t">Leyendo ${n > 1 ? `las ${n} partes` : esPdfUri(carga.fotos[0] || '') ? 'el PDF' : 'la foto'}…</p>
         <p class="note">Puede tardar unos segundos. ${n > 1 ? 'Junto las fotos y saco lo que se repite en los bordes.' : ''}</p>
         <button type="button" class="set__btn" data-cancelar-lectura>Cancelar</button></div>`;
   }
   return `${modalHead('Nuevo ticket', n ? `${n} ${n === 1 ? 'foto' : 'fotos'}` : '')}
-    <p class="modal__lead">${n ? '¿Sigue el ticket? Sacale otra foto a la parte que falta. Que se pise un poco con la anterior.' : 'Sacale una foto al ticket. Si es largo, sacale varias, de arriba hacia abajo.'}</p>
-    <div class="fotos">${carga.fotos.map((f, i) => `<figure class="fotos__item"><img src="${f}" alt="Foto ${i + 1}"><figcaption>${i + 1}</figcaption>
-        <button type="button" class="fotos__x" data-foto-x="${i}" aria-label="Sacar la foto ${i + 1}">${ic('x', 16)}</button></figure>`).join('')}
+    <p class="modal__lead">${n ? '¿Sigue el ticket? Sacale otra foto a la parte que falta. Que se pise un poco con la anterior.' : 'Sacale una foto al ticket. Si es largo, sacale varias, de arriba hacia abajo. Si te llegó en PDF, elegilo de tus archivos.'}</p>
+    <div class="fotos">${carga.fotos.map(fotoItemHtml).join('')}
       ${n < FOTOS_MAX ? `<button type="button" class="fotos__add" data-foto-cam>${ic('camera', 28)}<span>${n ? 'Otra foto' : 'Sacar foto'}</span></button>
-        <button type="button" class="fotos__add fotos__add--ghost" data-foto-gal>${ic('gallery', 28)}<span>De la galería</span></button>` : ''}
+        <button type="button" class="fotos__add fotos__add--ghost" data-foto-gal>${ic('gallery', 28)}<span>Galería o PDF</span></button>` : ''}
     </div>
     ${n ? `<div class="mvf__foot"><button type="button" class="mvf__submit" data-leer>Leer el ticket</button></div>` : ''}`;
 }
 async function addFotos(files) {
-  const list = [...(files || [])].filter((f) => f.type.startsWith('image/'));
+  const list = [...(files || [])].filter((f) => f.type.startsWith('image/') || esPdfFile(f));
   if (!list.length) return;
   if (!modalState) openModal({ render: fotosHtml, full: true, onClose: () => { carga.leyendo?.abort(); carga.leyendo = null; } });
   for (const f of list) {
     if (carga.fotos.length >= FOTOS_MAX) { toast(`Son ${FOTOS_MAX} fotos como mucho.`, { icon: 'error' }); break; }
+    if (esPdfFile(f)) {
+      if (f.size > PDF_MAX_BYTES) { toast('Ese PDF es demasiado grande.', { icon: 'error' }); continue; }
+      try { carga.fotos.push(await leerPdf(f)); } catch { toast('No pude abrir ese PDF.', { icon: 'error' }); }
+      continue;
+    }
     try { carga.fotos.push(await shrinkPhoto(f)); } catch { toast('No pude abrir esa foto.', { icon: 'error' }); }
   }
   repaintModal();
@@ -2206,7 +2230,7 @@ function registerSW() {
 if (window.__DS__) {
   window.comparame = {
     state, setData, ic, fmtMoney, fmtFecha, cantLabel, ticketRowHtml, productoRowHtml, cambioRowHtml, revRowHtml,
-    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml,
+    controlHtml, emptyState, whoChip, lugaresHtml, ciudadesHtml, sinDireccionHtml, setCiudad, openLugar, openLugarEdit, lugarJuntarHtml, openTicket, openTicketLugar, mapPinHtml, mapaRowHtml, mapaProdsHtml, localSelHtml, localPinHtml, toast, askConfirm, openSheet, medidaFieldsHtml, wireOptrail, hydrateIcons, gzBotonHtml, fotoItemHtml,
     setRev: (r) => { rev = r; },
   };
 } else {

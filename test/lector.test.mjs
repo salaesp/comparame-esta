@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import {
-  RESPUESTA_SCHEMA, UNIONES_MAX, contenido, consigna, limpiarRespuesta, leerTicket, fotosError, costoUsd, lectorConfig, FOTOS_MAX,
+  RESPUESTA_SCHEMA, UNIONES_MAX, contenido, consigna, limpiarRespuesta, leerTicket, fotosError, costoUsd, lectorConfig, FOTOS_MAX, PDF_MAX_BYTES,
 } from '../lib/lector.mjs';
 
 const carrefour = JSON.parse(readFileSync(new URL('./fixtures/carrefour-3-fotos.json', import.meta.url)));
@@ -58,6 +58,20 @@ test('fotosError: hace falta al menos una, hasta FOTOS_MAX, y que sean imágenes
   assert.match(fotosError(Array(FOTOS_MAX + 1).fill(FOTO)), /como mucho/);
   assert.match(fotosError(['hola']), /no es una imagen/);
   assert.equal(fotosError([FOTO]), null);
+});
+
+test('un PDF va como documento, con su aviso en la consigna, y tiene su propio tope', () => {
+  const PDF = 'data:application/pdf;base64,JVBERi0x';
+  const c = contenido([PDF, FOTO], { hoy: '2026-10-26' });
+  assert.equal(c[0].text, 'Foto 1 de 2 (PDF)');
+  assert.deepEqual(c[1], { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0x' } });
+  assert.equal(c[3].type, 'image');
+  assert.match(c[4].text, /también puede ser un PDF/);
+  assert.doesNotMatch(consigna({ n: 1 }), /PDF/);
+  assert.equal(fotosError([PDF]), null);
+  assert.equal(fotosError([PDF, FOTO]), null);
+  assert.match(fotosError(['data:application/pdf;base64,no es base64!']), /PDF/);
+  assert.match(fotosError(['data:application/pdf;base64,' + 'A'.repeat(PDF_MAX_BYTES)]), /demasiado grande/);
 });
 
 test('limpiarRespuesta: se queda con lo que es un número y un texto, y nunca más descuento que lo impreso', () => {

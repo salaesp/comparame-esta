@@ -10,7 +10,8 @@ Toda la UI y los textos van en castellano rioplatense.
   personas, como Gastienzos (`lib/cupo.mjs`: `allowed_emails` pasan siempre, el resto a
   `lista_espera`).
 - **Cargar un ticket**: el "+" (cámara) abre "Nuevo ticket"; se sacan una o varias fotos (hasta
-  `FOTOS_MAX`, 6) o se eligen de la galería, se achican en el teléfono (1600 px, JPEG 0,8) y van
+  `FOTOS_MAX`, 6) o se eligen de la galería, se achican en el teléfono (1600 px, JPEG 0,8) —o un **PDF** (la factura por mail, "Galería o PDF"), que va tal
+  cual como `document` (`PDF_RE`, `PDF_MAX_BYTES`)— y van
   **todas juntas en un solo pedido** a `POST /api/tickets/leer`, que las manda a **Claude**
   (`lib/lector.mjs`, SDK `@anthropic-ai/sdk`, structured outputs con `RESPUESTA_SCHEMA`). La consigna
   dice que son partes seguidas de un mismo ticket y que el principio de una foto puede repetir el
