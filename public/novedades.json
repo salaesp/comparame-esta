@@ -1,7 +1,7 @@
 [
   {
-    "version": "next:minor",
-    "fecha": "",
+    "version": "0.11.0",
+    "fecha": "2026-11-17",
     "notas": [
       "En la ficha de un producto sin código de barras, los parecidos de las webs aparecen solos, sin tocar nada. Si no es ninguno, tocá «No es ninguno» y no te lo vuelve a ofrecer.",
       "El buscador de Productos también busca en las webs de los súper: ves cuánto sale algo aunque todavía no lo hayas comprado."
