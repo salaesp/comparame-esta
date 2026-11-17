@@ -32,7 +32,7 @@ Toda la UI y los textos van en castellano rioplatense.
   poner". `POST /api/tickets` guarda (`guardarStmts` en `lib/catalogo.mjs`, un batch).
 - **Comparar**: Productos (buscador + lista con "Más barato en X" sólo si hay más de un lugar), la
   ficha de un producto ("¿Dónde está más barato?": el último precio de cada lugar, del más barato al
-  más caro; los de más de `FRESCO_DIAS` (30) días, grises), Lugares, Mapa y la ficha de un ticket. Se
+  más caro; los de más de `FRESCO_DIAS` (30) días, grises; tocar uno con punto abre el Mapa centrado en él con ese producto, `verEnMapa(id, pid)`, y lleva el pin; sin punto no hace nada; "Todos los precios" abre el ticket), Lugares, Mapa y la ficha de un ticket. Se
   compara (ordena) por **kg, litro o unidad de la medida** (`precio_medida`, `comparable`) cuando se sabe; si no, por unidad. Lo que se muestra es lo que costó uno (`precioDe`: el maple, la botella) y abajo el precio por medida (`porQue`).
 - **Los lugares** (`lib/catalogo.mjs` `buscarLugar`/`completarLugarStmts`): Claude copia la ciudad y
   el punto de venta (la parte de adelante del número de factura); un ticket se reconoce por la

@@ -1,5 +1,12 @@
 [
   {
+    "version": "next",
+    "fecha": "",
+    "notas": [
+      "En la ficha de un producto, tocar un lugar lo abre en el mapa (con el precio del producto). Los que tienen el pin son los que están en el mapa; los otros no hacen nada."
+    ]
+  },
+  {
     "version": "0.11.2",
     "fecha": "2026-11-17",
     "notas": [

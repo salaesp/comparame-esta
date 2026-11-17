@@ -811,10 +811,12 @@ async function openProducto(pid) {
       const pr = x.precio;
       const l = lugarDe(pr.lugar_id) || { cadena: pr.cadena, sucursal: pr.sucursal, direccion: pr.direccion, ciudad: pr.ciudad };
       const donde = lugarDonde(l);
-      return `<button type="button" class="mrow txrow${x.fresco && !x.otra ? '' : ' mrow--old'}" data-ticket="${esc(pr.ticket_id)}">
+      // Con el lugar en el mapa, la fila lo abre ahí (con este producto); sin punto, no hace nada.
+      const enMapa = ubicado(lugarDe(pr.lugar_id));
+      return `<button type="button" class="mrow txrow${x.fresco && !x.otra ? '' : ' mrow--old'}" ${enMapa ? `data-ver-mapa="${esc(pr.lugar_id)}" data-ver-prod="${esc(p.id)}" aria-label="${esc(lugarNombre(l))}: ver en el mapa"` : 'disabled'}>
         ${lugarIc(l)}
         <span class="mrow__text"><span class="mrow__title">${esc(lugarNombre(l))}</span>
-          <span class="row__meta"><span class="movchips">${x.fresco && !x.otra && i === 0 && frescos.length > 1 ? '<span class="chip chip--best">Más barato</span>' : ''}${donde ? `<span class="chip">${esc(donde)}</span>` : ''}${whoChip(pr.user_id)}<span class="chip">${esc(fmtFecha(pr.fecha))}</span></span></span></span>
+          <span class="row__meta"><span class="movchips">${x.fresco && !x.otra && i === 0 && frescos.length > 1 ? '<span class="chip chip--best">Más barato</span>' : ''}${donde || enMapa ? `<span class="chip">${enMapa ? ic('pin') : ''}${esc(donde || 'Ver en el mapa')}</span>` : ''}${whoChip(pr.user_id)}<span class="chip">${esc(fmtFecha(pr.fecha))}</span></span></span></span>
         <span class="mrow__right"><span class="mrow__amt">${fmtMoney(precioDe(pr))}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
       </button>`;
     };
@@ -1611,10 +1613,12 @@ function elegirLocalMapa(i) {
   document.activeElement?.blur();
   pintarMapa();
 }
-// "Ver en el mapa" de la ficha de un lugar: la pantalla Mapa centrada en él.
-function verEnMapa(id) {
+// "Ver en el mapa" de la ficha de un lugar: la pantalla Mapa centrada en él. Desde la ficha
+// de un producto (pid), con ese producto elegido: los puntos muestran su precio.
+function verEnMapa(id, pid = '') {
   mapa.foco = id;
-  mapa.prods = [];
+  mapa.prods = pid && state.productos.has(pid) ? [pid] : [];
+  mapa.q = '';
   mapa.local = null;
   mapa.centrado = false;
   closeLayer();
@@ -2382,7 +2386,7 @@ document.addEventListener('click', (e) => {
   if (mq) { quitarProductoMapa(mq.dataset.mapaQuitar); return; }
   if (t.closest('[data-mapa-yo]')) { ubicarme(); return; }
   const vm = t.closest('[data-ver-mapa]');
-  if (vm) { verEnMapa(vm.dataset.verMapa); return; }
+  if (vm) { verEnMapa(vm.dataset.verMapa, vm.dataset.verProd); return; }
   if (t.closest('[data-mapa-retry]')) { render(); return; }
   const lj = t.closest('[data-lugar-juntar]');
   if (lj) { openLugarJuntar(lj.dataset.lugarJuntar); return; }
