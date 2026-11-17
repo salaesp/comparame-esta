@@ -1,13 +1,15 @@
 // Productos del catálogo (sólo con sesión). El catálogo es de todos; los precios, de
 // cada uno y sus amigos.
 //   GET   /api/productos?q=     -> buscar en el catálogo (para elegir uno en la revisión)
-//   GET   /api/productos/:id    -> el producto y TODOS sus precios que ves (el historial entero)
+//   GET   /api/productos/:id    -> el producto, TODOS sus precios que ves (el historial entero)
+//                                  y los de las tiendas online por su EAN (lib/online.mjs)
 //   PATCH /api/productos/:id    -> corregir nombre, marca, medida o EAN
 import { json, error, readJson, segs } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
 import { visibles } from '../lib/amigos.mjs';
 import { normTexto, nombreKey, medidaDe, eanValido, tidyNombre } from '../lib/productos.mjs';
+import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL } from '../lib/online.mjs';
 
 const COLS = 'id, nombre, marca, medida, medida_unidad, ean, creado_por';
 
@@ -30,8 +32,13 @@ async function buscar(q) {
   return json({ ok: true, productos });
 }
 
+const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unidad, precio, precio_lista, precio_medida, promos, disponible, visto_at, cambio_at
+    from online_productos
+   where ean <> '' and ean = (select ean from productos where id = ?1)
+   order by coalesce(precio_medida, precio)`;
+
 async function uno(userId, id) {
-  const [[p], precios] = await txBatch([
+  let [[p], precios, online, consultas] = await txBatch([
     [`select ${COLS} from productos where id = ?1`, [id]],
     [`select pr.id, pr.ticket_id, pr.user_id, pr.lugar_id, pr.fecha, pr.texto, pr.cantidad, pr.unidad, pr.precio_lista,
              pr.importe, pr.descuento, pr.pagado, pr.precio_unit, pr.precio_medida,
@@ -39,8 +46,16 @@ async function uno(userId, id) {
         from precios pr left join lugares l on l.id = pr.lugar_id
        where pr.producto_id = ?1 and pr.user_id in ${visibles('?2')}
        order by pr.fecha desc`, [id, userId]],
+    // Lo de las tiendas online (lib/online.mjs), por el EAN, y cuándo se les preguntó.
+    [ONLINE_SQL, [id]],
+    [CONSULTAS_SQL.replace('?1', '(select ean from productos where id = ?1)'), [id]],
   ]);
-  return p ? json({ ok: true, producto: p, precios }) : error('no encontrado', 404);
+  if (!p) return error('no encontrado', 404);
+  // Con EAN, a las cadenas que no se consultaron hace poco se les pregunta ahora (con timeout).
+  if (p.ean && cadenasPorConsultar(consultas).length && await actualizarOnline(p.ean, { consultas })) {
+    online = await sql(ONLINE_SQL, [id]);
+  }
+  return json({ ok: true, producto: p, precios, online });
 }
 
 // Lo corrige quien lo creó o quien tiene algún precio cargado de él (el catálogo es de

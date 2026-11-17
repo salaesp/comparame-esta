@@ -1,5 +1,12 @@
 [
   {
+    "version": "next:minor",
+    "fecha": "",
+    "notas": [
+      "En la ficha de un producto con código de barras aparece su precio en la web de Carrefour, con la promo si tiene y cuándo se vio. Tocalo para abrirlo allá."
+    ]
+  },
+  {
     "version": "0.7.0",
     "fecha": "2026-11-17",
     "notas": [

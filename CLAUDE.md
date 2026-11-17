@@ -88,6 +88,15 @@ Toda la UI y los textos van en castellano rioplatense.
   lo pagado, la cadena, la fecha) que abre el alta de Gastienzos completada (allá lo lee
   `parseLaunchPrefill`); se elige cómo se pagó y se guarda allá. Las cuentas no se conectan. El
   teléfono recuerda cuáles mandaste (`localStorage['cmp:gastienzos']`). Tests en `test/gastienzos.test.mjs`.
+- **Los precios online** (`lib/online.mjs`): al abrir la ficha de un producto con EAN, `GET /api/productos/:id`
+  le pregunta en el momento a cada cadena de `CADENAS_ONLINE` (por ahora Carrefour) por su buscador público de
+  **VTEX** (`/api/catalog_system/pub/products/search?fq=alternateIds_Ean:…`, el mismo que usa su web; sin key) y
+  lo guarda: no vuelve a preguntar por ese EAN hasta `ONLINE_FRESCO_HORAS` (24) después (`online_consultas`,
+  también si no lo tenía). Si la tienda no contesta (`ONLINE_TIMEOUT_MS`), no se anota y se pregunta la próxima.
+  `normalizarVtex`: el precio de la web con sus promos para todos, el tachado, la medida (el "Gramaje" de VTEX) y
+  las promos sin las de tarjeta o banco. La ficha los muestra aparte ("En las webs de los súper", `onlineRowHtml`,
+  con cuándo los mostró la web), sin mezclarlos con los de los tickets. Sumar Jumbo, Disco, Vea, Changomás o DIA
+  es sumar su renglón. Tests en `test/online.test.mjs` (nunca salen a las tiendas: `setOnlineFetch`).
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
   Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
 
@@ -101,6 +110,10 @@ Toda la UI y los textos van en castellano rioplatense.
 - **Lo de cada uno**: `tickets` y `precios` (un renglón: cantidad, unidad u/kg, `precio_lista`,
   `importe`, `descuento`, `pagado`, `precio_unit`, `precio_medida`). Los ve quien los cargó y sus
   amigos: `visibles()` de `lib/amigos.mjs` en cada consulta.
+- **Lo online** (de todos, `lib/online.mjs`): `online_productos` (cadena + sku, con EAN, precio, `precio_lista`,
+  `promos`, `visto_at` —la última vez que la web lo devolvió— y `cambio_at` —desde cuándo tiene ese precio—),
+  `online_historial` (un renglón sólo cuando cambia el precio) y `online_consultas` (cuándo se le preguntó a cada
+  cadena por cada EAN).
 - `lecturas`: cada lectura con Claude, con tokens, costo (`costoUsd`) y tiempo. No se muestra.
 - Las fotos **no se guardan**.
 
@@ -132,7 +145,7 @@ historial entero.
 public/   index.html (la app en "/"), app.js, styles.css (la capa genérica de "Suave"),
           app.css (lo propio), sw.js, manifest, novedades.json, design-system/
 api/      auth-login, auth-callback, auth-logout, boot, amigos, tickets, productos, lugares
-lib/      http, db, schema, auth, cupo, amigos, lector, ticket, productos, catalogo, geo
+lib/      http, db, schema, auth, cupo, amigos, lector, ticket, productos, catalogo, geo, online
 scripts/  bump-ui-version.mjs, medir-modelos.mjs
 test/     node --test; los de server contra SQLite real (test/helpers/d1.mjs)
 ```
