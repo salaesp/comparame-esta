@@ -1,7 +1,7 @@
 [
   {
-    "version": "next",
-    "fecha": "",
+    "version": "0.11.2",
+    "fecha": "2026-11-17",
     "notas": [
       "Al elegir el producto de la web para uno sin código de barras, te pide que confirmes.",
       "Ya no está «No es ninguno»: los parecidos se buscan siempre, y si no aparece nada te lo dice, con «Buscar de nuevo».",
