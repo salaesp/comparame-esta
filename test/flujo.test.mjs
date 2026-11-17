@@ -92,7 +92,17 @@ test('el amigo ve el ticket; quien no es amigo, no', async () => {
   assert.equal(c.data.tickets.length, 0);
   assert.equal(c.data.precios.length, 0);
   const id = b.data.tickets[0].id;
-  assert.equal((await pedir(worker, beto, 'GET', `/api/tickets/${id}`)).data.ticket.renglones.length, 19);
+  // Cada renglón trae la foto de su producto (la de las webs, por el EAN), por si no está en memoria.
+  const [{ producto_id }] = await db.sql('select producto_id from precios where ticket_id = ?1 order by orden limit 1', [id]);
+  await db.sql("update productos set ean = '7790000000017' where id = ?1", [producto_id]);
+  const conEan = { producto_id, ean: '7790000000017' };
+  await db.sql("insert into online_productos (cadena, sku, ean, nombre, precio, imagen, visto_at, cambio_at) values ('Jumbo', 'f1', ?1, 'x', 1, 'https://x/foto.jpg', '2026-10-26', '2026-10-26')", [conEan.ean]);
+  const { renglones } = (await pedir(worker, beto, 'GET', `/api/tickets/${id}`)).data.ticket;
+  assert.equal(renglones.length, 19);
+  assert.equal(renglones.find((x) => x.producto_id === conEan.producto_id).foto, 'https://x/foto.jpg');
+  assert.ok(renglones.filter((x) => x.producto_id !== conEan.producto_id).every((x) => x.foto === null));
+  await db.sql("delete from online_productos where sku = 'f1'");
+  await db.sql("update productos set ean = '' where id = ?1", [producto_id]);
   assert.equal((await pedir(worker, caro, 'GET', `/api/tickets/${id}`)).status, 404);
   assert.equal((await pedir(worker, beto, 'DELETE', `/api/tickets/${id}`)).status, 404); // no es suyo
 });

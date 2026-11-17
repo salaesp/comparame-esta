@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.11.4",
+    "fecha": "2026-11-17",
+    "notas": [
+      "La ficha de un ticket muestra la foto de cada producto, como en la lista de Productos."
+    ]
+  },
+  {
     "version": "0.11.3",
     "fecha": "2026-11-17",
     "notas": [
