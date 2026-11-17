@@ -132,7 +132,8 @@ Toda la UI y los textos van en castellano rioplatense.
   `webRowHtml`; tocar uno abre tu ficha si ya lo tenés (por el EAN) o la de la web (`openWebProducto`,
   `GET /api/productos/web/:ean`: les pregunta a las cadenas que falten). No suma nada al catálogo.
 - **Amigos por link** (`/?amigo=amg_…`, sirve una vez y vence a los 7 días, `LINKS_MAX` 5 vivos).
-  Un amigo ve **todos** tus precios y vos los suyos; la amistad no se hereda.
+  Un amigo ve **todos** tus precios de productos y vos los suyos, pero **no los tickets** (el ticket,
+  lo pagado, qué más se compró): los tickets son sólo de quien los cargó. La amistad no se hereda.
 
 ## Los datos (`lib/schema.mjs`)
 
@@ -142,8 +143,11 @@ Toda la UI y los textos van en castellano rioplatense.
   los dos, la cadena entera; la ciudad no entra), `productos` (nombre, marca, medida en g/ml/u, EAN) y `alias` (cómo escribe cada
   cadena un producto: `cadena_key` + `texto_key` → producto; lo último que se confirmó gana).
 - **Lo de cada uno**: `tickets` y `precios` (un renglón: cantidad, unidad u/kg, `precio_lista`,
-  `importe`, `descuento`, `pagado`, `precio_unit`, `precio_medida`). Los ve quien los cargó y sus
-  amigos: `visibles()` de `lib/amigos.mjs` en cada consulta.
+  `importe`, `descuento`, `pagado`, `precio_unit`, `precio_medida`). Un ticket lo ve sólo quien lo
+  cargó (`/api/boot` y `GET /api/tickets/:id`, `user_id = ?1`); los precios, también sus amigos
+  (`visibles()` de `lib/amigos.mjs`), con `PRECIOS_COLS`: de los de un amigo, sin `ticket_id`, `orden`,
+  `cantidad`, `importe` ni `pagado`. En la app, tocar un precio ajeno abre el lugar (`precioAbre`), y
+  Lugares sale de los precios (no de los tickets).
 - **Lo online** (de todos, `lib/online.mjs`): `online_productos` (cadena + sku, con EAN, precio, `precio_lista`,
   `promos`, `visto_at` —la última vez que la web lo devolvió— y `cambio_at` —desde cuándo tiene ese precio—),
   `online_historial` (un renglón sólo cuando cambia el precio) y `online_consultas` (cuándo se le preguntó a cada

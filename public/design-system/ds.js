@@ -12,10 +12,10 @@ c.setData({
   lugares: [{ id: 'l1', cadena: 'Carrefour', sucursal: '', direccion: 'Av. Cabildo 2200', ciudad: 'CABA', lat: -34.561085, lon: -58.457507, geo_at: '2026-10-26' }, { id: 'l2', cadena: 'Coto', sucursal: 'Cabildo', direccion: 'Av. Cabildo 545', ciudad: 'CABA' },
     { id: 'l3', cadena: 'Carrefour', sucursal: '', direccion: '', ciudad: 'Rosario', punto_venta: '8188' }],
   productos: [{ id: 'p1', nombre: 'Fideos tirabuzón sin TACC', marca: 'Matarazzo', medida: 500, medida_unidad: 'g', ean: '7790070336224', foto: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="white"/><rect x="12" y="6" width="16" height="28" rx="3" fill="#e8b33c"/><rect x="12" y="14" width="16" height="8" fill="#2b5fa8"/></svg>') }, { id: 'p2', nombre: 'Banana', marca: '', medida: null, medida_unidad: '' }],
-  tickets: [{ id: 't1', user_id: 'yo', lugar_id: 'l1', fecha: dia(1), pagado: 208263.5, n_renglones: 19 }, { id: 't2', user_id: 'juli', lugar_id: 'l2', fecha: dia(3), pagado: 45300, n_renglones: 4 }, { id: 't3', user_id: 'yo', lugar_id: 'l3', fecha: dia(9), pagado: 12800, n_renglones: 3 }],
+  tickets: [{ id: 't1', user_id: 'yo', lugar_id: 'l1', fecha: dia(1), pagado: 208263.5, n_renglones: 19 }, { id: 't3', user_id: 'yo', lugar_id: 'l3', fecha: dia(9), pagado: 12800, n_renglones: 3 }],
   precios: [
     { id: 'a', ticket_id: 't1', user_id: 'yo', lugar_id: 'l1', producto_id: 'p1', fecha: dia(1), cantidad: 6, unidad: 'u', precio_unit: 4999, precio_medida: 9998, pagado: 29994 },
-    { id: 'b', ticket_id: 't2', user_id: 'juli', lugar_id: 'l2', producto_id: 'p1', fecha: dia(3), cantidad: 2, unidad: 'u', precio_unit: 4450, precio_medida: 8900, pagado: 8900 },
+    { id: 'b', ticket_id: null, user_id: 'juli', lugar_id: 'l2', producto_id: 'p1', fecha: dia(3), cantidad: null, unidad: 'u', precio_unit: 4450, precio_medida: 8900, pagado: null },
     { id: 'c', ticket_id: 't0', user_id: 'yo', lugar_id: 'l1', producto_id: 'p1', fecha: dia(20), cantidad: 1, unidad: 'u', precio_unit: 4500, precio_medida: 9000, pagado: 4500 },
     { id: 'd', ticket_id: 't1', user_id: 'yo', lugar_id: 'l1', producto_id: 'p2', fecha: dia(1), cantidad: 0.66, unidad: 'kg', precio_unit: 2299, precio_medida: 2299, pagado: 1517.34 },
   ],

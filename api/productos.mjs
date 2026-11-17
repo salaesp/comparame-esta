@@ -15,7 +15,7 @@
 import { json, error, readJson, segs } from '../lib/http.mjs';
 import { sessionUser } from '../lib/auth.mjs';
 import { sql, txBatch } from '../lib/db.mjs';
-import { visibles } from '../lib/amigos.mjs';
+import { visibles, PRECIOS_COLS } from '../lib/amigos.mjs';
 import { normTexto, nombreKey, medidaDe, eanValido, tidyNombre } from '../lib/productos.mjs';
 import { actualizarOnline, cadenasPorConsultar, CONSULTAS_SQL, FOTO_SQL, parecidosGuardados, buscarParecidos, buscarEnWebs, ONLINE_EAN_SQL, CADENAS_ONLINE } from '../lib/online.mjs';
 
@@ -55,8 +55,7 @@ const ONLINE_SQL = `select cadena, sku, nombre, url, unidad, medida, medida_unid
 async function uno(userId, id) {
   const [[p], precios, online, consultas, [guardados]] = await txBatch([
     [`select ${COLS}, ${FOTO_SQL} from productos where id = ?1`, [id]],
-    [`select pr.id, pr.ticket_id, pr.user_id, pr.lugar_id, pr.fecha, pr.texto, pr.cantidad, pr.unidad, pr.precio_lista,
-             pr.importe, pr.descuento, pr.pagado, pr.precio_unit, pr.precio_medida,
+    [`select ${PRECIOS_COLS('?2', 'pr.')},
              l.cadena, l.sucursal, l.direccion, l.ciudad
         from precios pr left join lugares l on l.id = pr.lugar_id
        where pr.producto_id = ?1 and pr.user_id in ${visibles('?2')}
