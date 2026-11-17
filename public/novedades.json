@@ -1,7 +1,7 @@
 [
   {
-    "version": "next:minor",
-    "fecha": "",
+    "version": "0.8.0",
+    "fecha": "2026-11-17",
     "notas": [
       "Cargar un ticket es más simple: un solo botón, «Agregar foto o PDF», y el teléfono te ofrece la cámara, la galería o tus archivos.",
       "Con la app instalada, abrí la factura del mail, tocá Compartir y elegí Comparame: entra directo como ticket nuevo. En la compu, podés arrastrar las fotos o el PDF."
