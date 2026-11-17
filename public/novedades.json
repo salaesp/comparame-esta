@@ -1,5 +1,12 @@
 [
   {
+    "version": "next",
+    "fecha": "",
+    "notas": [
+      "Los precios de las webs tienen el ícono de abrir: tocalos para mostrar el producto en la web del súper (por si en la góndola te preguntan)."
+    ]
+  },
+  {
     "version": "0.11.0",
     "fecha": "2026-11-17",
     "notas": [

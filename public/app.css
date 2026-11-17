@@ -24,6 +24,9 @@
 .mrow--old .mrow__title, .mrow--old .mrow__amt, .amt-old { color: var(--muted); }
 .mrow--old .mrow__ic { opacity: .6; }
 a.mrow { text-decoration: none; color: inherit; }
+/* El ícono de "abrir afuera" al lado de la cadena: se abre el producto en su web. */
+.onlinelink { display: inline-flex; vertical-align: -1px; margin-left: 6px; color: var(--muted); }
+.onlinelink svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 .onlinebusca { color: var(--muted); gap: var(--sp-3); }
 .onlinebusca .mrow__title { color: var(--muted); font-weight: 500; }
 /* La foto de un producto (de las webs de los súper) en el lugar del ícono y en la ficha. Las

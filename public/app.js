@@ -725,7 +725,7 @@ async function openWebProducto(r) {
         </div>` : '<p class="note">Ninguna web lo tiene en stock.</p>'}
       <span class="setsub">En las webs de los súper</span>
       <div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>
-      <p class="note">Son los precios de las webs: en la sucursal pueden ser otros. Todavía no lo cargaste en ningún ticket.</p>
+      <p class="note">${ONLINE_NOTA} Todavía no lo cargaste en ningún ticket.</p>
       <div class="prodfoot"><span class="chip">Código ${esc(r.ean)}</span></div>`;
   };
   openModal({ render: paint });
@@ -737,8 +737,9 @@ async function openWebProducto(r) {
   if (modalState?.render === paint) repaintModal();
 }
 
-// Un precio de la web de una cadena (lib/online.mjs): abre el producto en su web. Sin
-// stock, apagado. La fecha es la última vez que la web lo mostró.
+// Un precio de la web de una cadena (lib/online.mjs): abre el producto en su web (con el
+// ícono de "abrir afuera", para mostrarlo en la góndola). Sin stock, apagado. La fecha es la
+// última vez que la web lo mostró.
 function onlineRowHtml(o, p) {
   const chips = [
     o.visto_at ? `<span class="chip">${esc(fmtFecha(isoDate(new Date(o.visto_at))))}</span>` : '',
@@ -747,14 +748,17 @@ function onlineRowHtml(o, p) {
     o.promos ? `<span class="chip chip--warn">${esc(o.promos)}</span>` : '',
   ].join('');
   const pr = { unidad: o.unidad, precio_unit: o.precio, precio_medida: o.precio_medida };
-  return `<a class="mrow txrow${o.disponible ? '' : ' mrow--old'}" href="${esc(o.url)}" target="_blank" rel="noopener">
+  const tag = o.url ? 'a' : 'div';
+  const link = o.url ? ` href="${esc(o.url)}" target="_blank" rel="noopener" aria-label="${esc(`Ver en la web de ${o.cadena}`)}"` : '';
+  return `<${tag} class="mrow txrow${o.disponible ? '' : ' mrow--old'}"${link}>
     ${lugarIc({ cadena: o.cadena })}
-    <span class="mrow__text"><span class="mrow__title">${esc(o.cadena)}</span>
+    <span class="mrow__text"><span class="mrow__title">${esc(o.cadena)}${o.url ? `<span class="onlinelink" aria-hidden="true">${ic('out', 14)}</span>` : ''}</span>
       <span class="row__meta"><span class="movchips">${chips}</span></span></span>
     <span class="mrow__right"><span class="mrow__amt">${fmtMoney(o.precio)}</span><span class="row__of">${esc(porQue(pr, p))}</span></span>
-  </a>`;
+  </${tag}>`;
 }
 
+const ONLINE_NOTA = 'Tocá una cadena para ver el producto en su web. En la sucursal el precio puede ser otro.';
 // Mientras se les pregunta a las webs: "Buscando en Jumbo, Vea y DIA…" (o el texto que se pase).
 const enumerar = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}` : xs[0] || '');
 function onlineBuscandoHtml(cadenas) {
@@ -828,7 +832,7 @@ async function openProducto(pid) {
           <span class="prodhero__sub">${esc(porQue(mejor.precio, p))} en ${esc(lugarNombre(lugarDe(mejor.precio.lugar_id) || mejor.precio))}${frescos.length > 1 ? ` · ${fmtMoney(precioDe(frescos[frescos.length - 1].precio) - precioDe(mejor.precio))} menos que en el más caro` : ''}</span>
         </div>` : `<p class="note">No hay precios de los últimos ${FRESCO_DIAS} días.</p>`}
       ${frescos.length ? `<span class="setsub">¿Dónde está más barato${ciudad ? ` en ${esc(ciudad)}` : ''}?</span><div class="gcard">${frescos.map(fila).join('')}</div>` : ''}
-      ${data.online.length || data.buscando.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>`
+      ${data.online.length || data.buscando.length ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${data.online.map((o) => onlineRowHtml(o, p)).join('')}${data.buscando.length ? onlineBuscandoHtml(data.buscando) : ''}</div>${data.online.length ? `<p class="note">${ONLINE_NOTA}</p>` : ''}`
         : !p.ean && parecidosHtml(data.parecidos) ? `<span class="setsub">En las webs de los súper</span><div class="gcard">${parecidosHtml(data.parecidos)}</div>` : ''}
       ${viejos.length ? `<span class="setsub">Hace más de ${FRESCO_DIAS} días</span><div class="gcard">${viejos.map(fila).join('')}</div>` : ''}
       ${otras.length ? `<span class="setsub">En otras ciudades</span><div class="gcard">${otras.map((x, i) => fila({ ...x, otra: true }, i)).join('')}</div>` : ''}
