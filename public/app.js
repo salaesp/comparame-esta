@@ -1677,7 +1677,7 @@ async function openTicket(id) {
       <div class="gcard">${renglones.map((pr) => {
         const p = state.productos.get(pr.producto_id);
         return `<button type="button" class="mrow txrow" ${p ? `data-producto="${esc(p.id)}"` : 'disabled'}>
-          <span class="mrow__ic" aria-hidden="true">${ic('tag', 20)}</span>
+          ${prodIcHtml({ foto: p?.foto || pr.foto })}
           <span class="mrow__text"><span class="mrow__title">${esc(p ? productoNombre(p) : pr.texto)}</span>
             <span class="row__meta"><span class="movchips"><span class="chip">${esc(cantLabel(pr.cantidad, pr.unidad, pr.precio_unit))}</span>${pr.descuento > 0 ? `<span class="chip chip--best">−${fmtMoney(pr.descuento)}</span>` : ''}</span></span></span>
           <span class="mrow__right"><span class="mrow__amt">${fmtMoney(pr.pagado)}</span></span>

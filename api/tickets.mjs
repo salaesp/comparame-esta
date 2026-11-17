@@ -13,6 +13,7 @@ import { fotosError, leerTicket, lectorConfig, costoUsd } from '../lib/lector.mj
 import { validarTicket, lugarLimpio } from '../lib/ticket.mjs';
 import { cruzarLectura, guardarStmts, moverTicketStmts } from '../lib/catalogo.mjs';
 import { ubicarLugares, enSegundoPlano } from '../lib/geo.mjs';
+import { FOTO_SQL } from '../lib/online.mjs';
 
 export default async function (req, env, ctx) {
   const me = await sessionUser(req);
@@ -99,8 +100,9 @@ async function uno(userId, id) {
     [`select t.id, t.user_id, t.lugar_id, t.fecha, t.total, t.pagado, t.n_fotos, t.n_renglones, t.created_at
         from tickets t where t.id = ?2 and t.user_id in ${visibles('?1')}`, [userId, id]],
     [`select p.id, p.producto_id, p.orden, p.texto, p.cantidad, p.unidad, p.precio_lista, p.importe, p.descuento,
-             p.pagado, p.precio_unit, p.precio_medida
-        from precios p where p.ticket_id = ?2 and p.user_id in ${visibles('?1')} order by p.orden`, [userId, id]],
+             p.pagado, p.precio_unit, p.precio_medida, ${FOTO_SQL}
+        from precios p left join productos on productos.id = p.producto_id
+       where p.ticket_id = ?2 and p.user_id in ${visibles('?1')} order by p.orden`, [userId, id]],
   ]);
   return t ? json({ ok: true, ticket: { ...t, renglones } }) : error('no encontrado', 404);
 }
