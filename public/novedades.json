@@ -1,7 +1,7 @@
 [
   {
-    "version": "next:minor",
-    "fecha": "",
+    "version": "0.7.0",
+    "fecha": "2026-11-17",
     "notas": [
       "Si el ticket te llegó en PDF (la factura por mail), cargalo desde «Galería o PDF»: se lee igual que una foto."
     ]
